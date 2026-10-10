@@ -6,6 +6,7 @@ import { duration, formatClock, formatDuration, groupEntriesByDate, localFields 
 import './styles.css';
 import { applyTheme } from './theme.js';
 import { focusStore } from './focus-store.js';
+import { spotifyStore } from './spotify-store.js';
 
 function Icon({ name = 'clock', size = 20 }) {
   const paths = {
@@ -16,6 +17,12 @@ function Icon({ name = 'clock', size = 20 }) {
     arrow: <><path d="M5 12h14m-5-5 5 5-5 5" /></>,
     sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></>,
     target: <><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1" /></>,
+    note: <><path d="M14 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-9" /><path d="m16 3 5 5-9 9-5 1 1-5 8-10Z" /></>,
+    music: <><path d="M9 18V5l12-2v13M9 9l12-2" /><ellipse cx="6" cy="18" rx="3" ry="3" /><ellipse cx="18" cy="16" rx="3" ry="3" /></>,
+    play: <path d="m9 5 10 7-10 7Z" />,
+    pause: <><path d="M8 5v14M16 5v14" /></>,
+    previous: <><path d="M5 5v14m14-14-10 7 10 7Z" /></>,
+    next: <><path d="M19 5v14M5 5l10 7-10 7Z" /></>,
     power: <><path d="M12 3v9M7 5.5a9 9 0 1 0 10 0" /></>,
   };
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
@@ -152,6 +159,51 @@ const GoalPanel = observer(function GoalPanel() {
   </aside>;
 });
 
+function SpotifyCover({ url, name }) {
+  const [failed, setFailed] = useState(false);
+  return <div className="spotify-cover">
+    {url && !failed
+      ? <img src={url} alt={`Cover art for ${name}`} width="56" height="56" referrerPolicy="no-referrer" onError={() => setFailed(true)} />
+      : <Icon name="music" size={22} />}
+  </div>;
+}
+
+const SpotifyPanel = observer(function SpotifyPanel() {
+  useEffect(() => { spotifyStore.start(); return spotifyStore.stop; }, []);
+  const action = spotifyStore.playing ? 'pause' : 'play';
+  return <aside className="panel side-panel spotify-panel" aria-labelledby="spotify-heading">
+    <div className="panel-heading"><div className="heading-with-icon"><span className="soft-icon spotify-icon"><Icon name="music" size={14} /></span><h2 id="spotify-heading"><a href="https://open.spotify.com/" target="_blank" rel="noreferrer">Spotify</a></h2></div></div>
+    {spotifyStore.connected ? <>
+      {spotifyStore.playback?.name && <div className="spotify-track">
+        <SpotifyCover key={spotifyStore.playback.image_url || spotifyStore.playback.name} url={spotifyStore.playback.image_url} name={spotifyStore.playback.name} />
+        <div className="spotify-track-info"><a href={spotifyStore.playback.url} target="_blank" rel="noreferrer" title={spotifyStore.playback.name}>{spotifyStore.playback.name}</a>{spotifyStore.playback.artist && <p title={spotifyStore.playback.artist}>{spotifyStore.playback.artist}</p>}</div>
+      </div>}
+      {!spotifyStore.playback?.available && <p className="side-note spotify-status" role="status">{spotifyStore.statusText}</p>}
+      <div className="spotify-controls">
+        <button type="button" className="row-button" aria-label="Previous track" title="Previous track" disabled={!spotifyStore.canControl('previous')} onClick={() => spotifyStore.command('previous')}><Icon name="previous" size={16} /></button>
+        <button type="button" className="primary-button" aria-label={spotifyStore.playing ? 'Pause Spotify' : 'Play Spotify'} title={spotifyStore.playing ? 'Pause' : 'Play'} disabled={!spotifyStore.canControl(action)} onClick={() => spotifyStore.command(action)}><Icon name={action} size={18} /></button>
+        <button type="button" className="row-button" aria-label="Next track" title="Next track" disabled={!spotifyStore.canControl('next')} onClick={() => spotifyStore.command('next')}><Icon name="next" size={16} /></button>
+      </div>
+      <div className="spotify-links"><a href="https://open.spotify.com/" target="_blank" rel="noreferrer">Open Spotify</a><button type="button" disabled={spotifyStore.busy} onClick={spotifyStore.disconnect}>Disconnect</button></div>
+    </> : <form onSubmit={event => { event.preventDefault(); spotifyStore.connect(); }}>
+      {!spotifyStore.configured && spotifyStore.loaded && <label>Spotify app Client ID<input type="text" autoComplete="off" spellCheck="false" required maxLength="32" placeholder="Paste your Client ID" disabled={spotifyStore.connecting} value={spotifyStore.clientId} onChange={event => spotifyStore.setClientId(event.target.value)} /></label>}
+      <p className="side-note spotify-status" role="status">{spotifyStore.statusText}</p>
+      <button type="submit" className="primary-button spotify-connect" disabled={!spotifyStore.loaded || spotifyStore.connecting}>{spotifyStore.connecting ? 'Connecting…' : 'Connect Spotify'}</button>
+      {spotifyStore.configured && !spotifyStore.connecting && <div className="spotify-links spotify-setup-links"><button type="button" onClick={spotifyStore.editSetup}>Change Client ID</button></div>}
+    </form>}
+    {spotifyStore.error && <div className="spotify-error" role="alert">{spotifyStore.error}<button type="button" disabled={spotifyStore.connecting || spotifyStore.busy || spotifyStore.refreshing} onClick={spotifyStore.refresh}>Retry</button></div>}
+  </aside>;
+});
+
+const Notepad = observer(function Notepad() {
+  const notesRef = useRef(null);
+  return <aside className="panel side-panel notes-panel" aria-labelledby="notes-heading">
+    <div className="panel-heading"><div className="heading-with-icon"><span className="soft-icon"><Icon name="note" size={14} /></span><h2 id="notes-heading">Notepad</h2></div></div>
+    <textarea ref={notesRef} className="notes-input" rows="8" aria-labelledby="notes-heading" placeholder="Write your notes…" value={focusStore.notes} onChange={event => focusStore.setNotes(event.target.value)} />
+    <div className="notes-actions"><button type="button" className="row-button" disabled={!focusStore.notes} onClick={() => { focusStore.clearNotes(); notesRef.current?.focus(); }}>Clear</button></div>
+  </aside>;
+});
+
 const App = observer(function App() {
   useEffect(() => {
     store.load();
@@ -163,14 +215,14 @@ const App = observer(function App() {
     <main>
       <div className="workspace-layout">
         {store.stopped ? <section className="panel stopped-panel tracker-column" role="status"><span className="soft-icon"><Icon name="power" size={16} /></span><h1>Realtime is stopped</h1><p>Your saved entries are kept. Open Realtime.exe to start again.</p></section> : <>
-        <FocusTimer />
+        <div className="side-column"><FocusTimer /><SpotifyPanel /></div>
         <div className="tracker-column">
           <div className="page-intro tracker-intro"><h1>Time tracker</h1>{store.canShutdown && <button type="button" className="stop-app-button" onClick={store.stopApp} disabled={store.loading || store.saving || store.stopping}><Icon name="power" size={12} />{store.stopping ? 'Stopping...' : 'Stop app'}</button>}</div>
           {store.shutdownError && <div className="feedback error shutdown-error" role="alert">{store.shutdownError}</div>}
           <EntryForm />
           <Entries />
         </div>
-        <GoalPanel />
+        <div className="side-column"><GoalPanel /><Notepad /></div>
         </>}
       </div>
     </main>

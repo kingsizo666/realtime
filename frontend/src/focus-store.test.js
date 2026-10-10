@@ -134,7 +134,28 @@ test('existing saved goals survive the upgrade without starting unfinished draft
 test('unavailable or corrupted storage does not break the panels', () => {
   const unavailable = { getItem: () => { throw new Error('Unavailable'); }, setItem: () => { throw new Error('Unavailable'); } };
   const state = new FocusStore(unavailable, 1000);
-  assert.doesNotThrow(() => { state.start(1000); state.setGoal('Keep working'); });
+  assert.doesNotThrow(() => { state.start(1000); state.setGoal('Keep working'); state.setNotes('Some notes'); state.clearNotes(); });
   const corrupted = new FocusStore({ getItem: () => '{', setItem: () => {} }, 1000);
   assert.equal(corrupted.timeLabel, '25:00');
+});
+
+test('notes retain multiline text across refresh and clearing preserves the goal and timer', () => {
+  const storage = memoryStorage();
+  const original = new FocusStore(storage, 1000);
+  original.setGoal('Validate the protocol');
+  original.startGoal();
+  original.start(1000);
+  const notes = 'First finding\n\n  Next steps: review timing. ✓';
+  original.setNotes(notes);
+  const restored = new FocusStore(storage, 61_000);
+  assert.equal(restored.notes, notes);
+  restored.pause(61_000);
+  assert.equal(new FocusStore(storage, 61_000).notes, notes);
+  restored.clearNotes();
+  const cleared = new FocusStore(storage, 61_000);
+  assert.equal(cleared.notes, '');
+  assert.equal(cleared.goal, 'Validate the protocol');
+  assert.equal(cleared.goalActive, true);
+  assert.equal(cleared.timeLabel, '24:00');
+  assert.equal(cleared.running, false);
 });

@@ -9,6 +9,10 @@ __pycache__/
 /backend/db.sqlite3-*
 /launcher.log
 .env
+/backend/spotify.config.json
+/backend/spotify.config.tmp
+/backend/.spotify-auth.json
+/backend/.spotify-auth.tmp
 
 # Generated builds
 /frontend/dist/

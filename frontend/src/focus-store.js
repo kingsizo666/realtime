@@ -12,6 +12,7 @@ export class FocusStore {
   goal = '';
   goalStarted = false;
   goalCompleted = false;
+  notes = '';
   storage = null;
 
   constructor(storage, now = Date.now()) {
@@ -31,6 +32,7 @@ export class FocusStore {
       if (typeof saved.goal === 'string') this.goal = saved.goal.slice(0, 1000);
       this.goalCompleted = saved.goalCompleted === true && Boolean(this.goal.trim());
       this.goalStarted = Boolean(this.goal.trim()) && (saved.goalStarted === true || this.goalCompleted);
+      if (typeof saved.notes === 'string') this.notes = saved.notes;
     } catch {
       // The panels remain usable if browser storage is disabled or corrupted.
     }
@@ -55,6 +57,7 @@ export class FocusStore {
         minutes: this.validMinutes ? this.minutes : '25', remainingMs: this.remainingMs,
         deadline: this.deadline, completed: this.completed, goal: this.goal,
         goalStarted: this.goalStarted, goalCompleted: this.goalCompleted,
+        notes: this.notes,
       }));
     } catch {}
   }
@@ -129,6 +132,15 @@ export class FocusStore {
     if (!this.goalActive) return;
     this.goalCompleted = true;
     this.persist();
+  }
+
+  setNotes(value) {
+    this.notes = value;
+    this.persist();
+  }
+
+  clearNotes() {
+    this.setNotes('');
   }
 }
 

@@ -42,3 +42,15 @@ Keep the executable in the project root. Entries are saved in `backend/db.sqlite
 Edit the `CATEGORIES` list in `backend/tracking/models.py`.
 
 Stop and reopen **Realtime.exe**, then refresh the page. Category list changes need no migrations or frontend rebuild.
+
+## Connect Spotify
+
+Spotify Premium is required. Create an app in the [Spotify developer dashboard](https://developer.spotify.com/dashboard), select **Web API**, and register this exact redirect URI:
+
+```text
+http://127.0.0.1:8000/spotify/callback
+```
+
+Open Realtime at `http://127.0.0.1:8000`, paste the app's **Client ID** into the Spotify panel, and click **Connect Spotify**. No client secret is needed. Start a song in Spotify on your computer or phone; the panel shows the song and artist with previous, play/pause, and next controls.
+
+For another listener, add their account to the app's **User Management** allowlist (new development apps support up to five users). Spotify settings and sign-in files stay locally in `backend/` and are excluded from Git. **Disconnect** removes the saved sign-in.
