@@ -1,0 +1,22 @@
+# Local dependencies and Python caches
+/.venv/
+node_modules/
+__pycache__/
+*.py[cod]
+
+# Personal data and logs
+/backend/db.sqlite3
+/backend/db.sqlite3-*
+/launcher.log
+.env
+
+# Generated builds
+/frontend/dist/
+/Realtime.exe
+/Realtime.test.exe
+/launcher/realtime.ico
+/.realtime-stop-*.signal
+
+# Tool caches and test output
+.npm-cache/
+test-results/
