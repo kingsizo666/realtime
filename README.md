@@ -6,7 +6,7 @@ A personal time tracker built with Django, React, and MobX.
 
 - Windows 11 with .NET Framework 4.8 or newer (normally included).
 - Python 3.12+ and Node.js 22.12+, both available on PATH.
-- Internet access for initial setup. DuckDuckGo is optional.
+- Internet access for initial setup and a web browser.
 
 ## First-time setup
 
@@ -28,10 +28,6 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build-launcher.ps1
 
 Double-click **Realtime.exe**. It opens DuckDuckGo when available, otherwise your default browser.
 
-Click **Stop app** to shut down. If the browser is closed, run:
-
-```powershell
-.\Realtime.exe --stop
-```
+Click **Stop app** to shut down.
 
 Keep the executable in the project root. Entries are saved in `backend/db.sqlite3`; personal data and generated files are excluded from Git.
