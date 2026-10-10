@@ -44,7 +44,7 @@ export class FocusStore {
   get secondsLeft() { return Math.ceil((this.running ? Math.max(0, this.deadline - this.now) : this.remainingMs) / 1000); }
   get timeLabel() { return `${String(Math.floor(this.secondsLeft / 60)).padStart(2, '0')}:${String(this.secondsLeft % 60).padStart(2, '0')}`; }
   get progress() { return Math.max(0, Math.min(1, 1 - this.secondsLeft * 1000 / this.durationMs)); }
-  get timerStatus() { return this.completed ? 'Focus session complete.' : this.running ? 'Time to focus.' : this.remainingMs < this.durationMs ? 'Paused. Resume when ready.' : 'Ready when you are.'; }
+  get timerStatus() { return this.completed ? 'Focus session complete.' : this.running ? 'Time to focus.' : this.remainingMs < this.durationMs ? 'Paused. Resume when ready.' : 'Press start when ready.'; }
   get goalActive() { return this.goalStarted && !this.goalCompleted; }
   get canSetGoal() { return Boolean(this.goal.trim()) && !this.goalActive; }
   get goalStatus() { return this.goalCompleted ? 'Goal complete. Well done.' : this.goalActive ? 'In progress' : 'Set a goal to begin.'; }

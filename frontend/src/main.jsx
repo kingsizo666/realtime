@@ -33,7 +33,7 @@ const EntryForm = observer(function EntryForm() {
   return <section className="panel entry-panel" aria-labelledby="entry-heading">
     <div className="panel-heading">
       <div className="heading-with-icon"><span className="soft-icon"><Icon name="plus" size={15} /></span><h2 id="entry-heading">{active ? 'Current entry' : 'New entry'}</h2></div>
-      {active ? <span className="active-label"><span className="status-dot" />In progress</span> : <span className="panel-caption">Make your time count.</span>}
+      {active && <span className="active-label"><span className="status-dot" />In progress</span>}
     </div>
     <form onSubmit={submit}>
       <fieldset className="entry-fields" disabled={store.saving || store.loading}>
@@ -51,7 +51,7 @@ const EntryForm = observer(function EntryForm() {
         </div>
       </fieldset>
       <div className="form-actions">
-        <p><Icon size={15} />{active ? (store.form.endTime ? 'Submit saves your changes and keeps the selected end time.' : 'Submit saves your changes and uses the current clock time.') : 'An earlier end time means the following day.'}</p>
+        {active && <p><Icon size={15} />{store.form.endTime ? 'Submit saves your changes and keeps the selected end time.' : 'Submit saves your changes and uses the current clock time.'}</p>}
         <button type="submit" className="primary-button" disabled={store.saving || store.loading || !store.categories.length}>
           <Icon name={active ? 'check' : 'plus'} size={14} />{store.saving ? 'Saving…' : active ? 'Submit' : 'Add entry'}
         </button>
@@ -130,7 +130,7 @@ const FocusTimer = observer(function FocusTimer() {
       <label>Duration <span className="timer-duration"><input type="number" min="1" max="180" step="1" required disabled={focusStore.running} value={focusStore.minutes} onChange={event => focusStore.setMinutes(event.target.value)} aria-label="Focus duration in minutes" /><span>min</span></span></label>
       <div className={`timer-display ${focusStore.completed ? 'timer-complete' : ''}`} role="timer" aria-label="Focus time remaining">{focusStore.timeLabel}</div>
       <progress className="timer-progress" max="1" value={focusStore.progress} aria-label="Focus session progress" />
-      <p className="side-note timer-status" role="status">{focusStore.timerStatus}</p>
+      {focusStore.timerStatus && <p className="side-note timer-status" role="status">{focusStore.timerStatus}</p>}
       <div className="timer-actions"><button type="submit" className="primary-button">{focusStore.running ? 'Pause' : focusStore.remainingMs < focusStore.durationMs && !focusStore.completed ? 'Resume' : 'Start'}</button><button type="button" className="row-button" onClick={focusStore.reset}>Reset</button></div>
       {focusStore.timerError && <p className="cell-error" role="alert">{focusStore.timerError}</p>}
     </form>
@@ -159,7 +159,7 @@ const App = observer(function App() {
     return () => window.clearInterval(timer);
   }, []);
   return <>
-    <header className="site-header"><div className="header-layout"><div className="header-inner"><a className="brand" href="/" aria-label="Realtime home"><span className="brand-mark"><Icon size={15} /></span>realtime<span className="brand-dot">.</span></a><div className="header-actions"><span className="header-label">Time tracker</span><button type="button" className="theme-toggle" aria-label={store.theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} title={store.theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} aria-pressed={store.theme === 'dark'} onClick={store.toggleTheme}><Icon name="sun" size={16} /></button></div></div></div></header>
+    <header className="site-header"><div className="header-layout"><div className="header-inner"><a className="brand" href="/" aria-label="Realtime home"><span className="brand-mark"><Icon size={15} /></span>realtime<span className="brand-dot">.</span></a><div className="header-actions"><button type="button" className="theme-toggle" aria-label={store.theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} title={store.theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} aria-pressed={store.theme === 'dark'} onClick={store.toggleTheme}><Icon name="sun" size={16} /></button></div></div></div></header>
     <main>
       <div className="workspace-layout">
         {store.stopped ? <section className="panel stopped-panel tracker-column" role="status"><span className="soft-icon"><Icon name="power" size={16} /></span><h1>Realtime is stopped</h1><p>Your saved entries are kept. Open Realtime.exe to start again.</p></section> : <>
@@ -169,7 +169,6 @@ const App = observer(function App() {
           {store.shutdownError && <div className="feedback error shutdown-error" role="alert">{store.shutdownError}</div>}
           <EntryForm />
           <Entries />
-          <footer className="page-footer"><span>Times shown in your local timezone.</span></footer>
         </div>
         <GoalPanel />
         </>}
