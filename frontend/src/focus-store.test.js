@@ -43,11 +43,13 @@ test('timer and goal restore across refresh, including elapsed focus time', () =
   const storage = memoryStorage();
   const original = new FocusStore(storage, 1000);
   original.setGoal('Validate the network protocol');
-  original.setGoalCompleted(true);
+  original.startGoal();
+  original.completeGoal();
   original.start(1000);
   const restored = new FocusStore(storage, 121_000);
   assert.equal(restored.goal, 'Validate the network protocol');
   assert.equal(restored.goalCompleted, true);
+  assert.equal(restored.goalActive, false);
   assert.equal(restored.timeLabel, '23:00');
   assert.equal(restored.running, true);
   const expired = new FocusStore(storage, 2_000_000);
@@ -55,7 +57,7 @@ test('timer and goal restore across refresh, including elapsed focus time', () =
   assert.equal(expired.running, false);
 });
 
-test('invalid timer durations do not start and blank goals cannot be complete', () => {
+test('invalid timer durations do not start', () => {
   const state = new FocusStore(memoryStorage(), 1000);
   for (const value of ['', '0', '181', '1.5', 'oops']) {
     state.setMinutes(value);
@@ -63,12 +65,70 @@ test('invalid timer durations do not start and blank goals cannot be complete', 
     assert.equal(state.running, false);
     assert.equal(state.timerError, 'Choose 1 to 180 minutes.');
   }
-  state.setGoalCompleted(true);
+});
+
+test('goals must be explicitly set before completion and edits need setting again', () => {
+  const state = new FocusStore(memoryStorage(), 1000);
+  state.setGoal('  ');
+  state.startGoal();
+  state.completeGoal();
+  assert.equal(state.goalStarted, false);
   assert.equal(state.goalCompleted, false);
-  state.setGoal('Finish validation');
-  state.setGoalCompleted(true);
+  assert.equal(state.canSetGoal, false);
+
+  state.setGoal('  Finish validation  ');
+  state.completeGoal();
+  assert.equal(state.goalCompleted, false);
+  assert.equal(state.canSetGoal, true);
+  state.startGoal();
+  assert.equal(state.goal, 'Finish validation');
+  assert.equal(state.goalActive, true);
+  assert.equal(state.canSetGoal, false);
+  state.setGoal(state.goal);
+  assert.equal(state.goalActive, true);
+
   state.setGoal('Write the results');
+  assert.equal(state.goalStarted, false);
+  state.completeGoal();
   assert.equal(state.goalCompleted, false);
+  state.startGoal();
+  state.completeGoal();
+  assert.equal(state.goalActive, false);
+  assert.equal(state.goalCompleted, true);
+  state.startGoal();
+  assert.equal(state.goalCompleted, false);
+  assert.equal(state.goalActive, true);
+});
+
+test('active goals and drafts retain their state across refreshes', () => {
+  const storage = memoryStorage();
+  const original = new FocusStore(storage, 1000);
+  original.setGoal('Research scheduling');
+  assert.equal(new FocusStore(storage, 1000).goalStarted, false);
+  original.startGoal();
+  const active = new FocusStore(storage, 1000);
+  assert.equal(active.goalActive, true);
+  assert.equal(active.goal, 'Research scheduling');
+  active.setGoal('Research scheduling and validation');
+  const draft = new FocusStore(storage, 1000);
+  assert.equal(draft.goalActive, false);
+  assert.equal(draft.canSetGoal, true);
+});
+
+test('existing saved goals survive the upgrade without starting unfinished drafts', () => {
+  const storage = memoryStorage();
+  storage.setItem('realtime-focus', JSON.stringify({ goal: 'Previous goal', goalCompleted: true }));
+  const completed = new FocusStore(storage, 1000);
+  assert.equal(completed.goalCompleted, true);
+  assert.equal(completed.goalStarted, true);
+  storage.setItem('realtime-focus', JSON.stringify({ goal: 'Previous draft', goalCompleted: false }));
+  const draft = new FocusStore(storage, 1000);
+  assert.equal(draft.goal, 'Previous draft');
+  assert.equal(draft.goalStarted, false);
+  storage.setItem('realtime-focus', JSON.stringify({ goal: ' ', goalStarted: true, goalCompleted: true }));
+  const blank = new FocusStore(storage, 1000);
+  assert.equal(blank.goalStarted, false);
+  assert.equal(blank.goalCompleted, false);
 });
 
 test('unavailable or corrupted storage does not break the panels', () => {

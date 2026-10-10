@@ -136,12 +136,17 @@ const FocusTimer = observer(function FocusTimer() {
 });
 
 const GoalPanel = observer(function GoalPanel() {
-  return <aside className={`panel side-panel goal-panel ${focusStore.goalCompleted ? 'goal-complete' : ''}`} aria-labelledby="goal-heading">
-    <div className="goal-heading"><span className="goal-icon"><Icon name={focusStore.goalCompleted ? 'check' : 'target'} size={19} /></span><div><h2 id="goal-heading">Current goal</h2><p>One clear priority.</p></div></div>
+  return <aside className={`panel side-panel goal-panel ${focusStore.goalCompleted ? 'goal-complete' : focusStore.goalActive ? 'goal-active' : ''}`} aria-labelledby="goal-heading">
+    <div className="goal-heading"><span className="goal-icon"><Icon name={focusStore.goalCompleted ? 'check' : 'target'} size={19} /></span><h2 id="goal-heading">Current goal</h2></div>
     <label className="goal-label" htmlFor="current-goal">Your focus</label>
     <textarea id="current-goal" className="goal-input" rows="4" maxLength="1000" placeholder="Define one thing to accomplish…" value={focusStore.goal} onChange={event => focusStore.setGoal(event.target.value)} />
-    <label className="goal-checkbox"><input type="checkbox" checked={focusStore.goalCompleted} disabled={!focusStore.goal.trim()} onChange={event => focusStore.setGoalCompleted(event.target.checked)} /><span>{focusStore.goalCompleted ? 'Goal complete' : 'Mark complete'}</span></label>
-    {focusStore.goalCompleted && <p className="side-note goal-success" role="status">Done. One step forward.</p>}
+    <div className="goal-actions">
+      <button type="button" className="primary-button" disabled={!focusStore.canSetGoal} onClick={focusStore.startGoal}>Set Goal</button>
+      <button type="button" className="row-button goal-complete-button" disabled={!focusStore.goalActive} onClick={focusStore.completeGoal}><Icon name="check" size={13} />Complete</button>
+    </div>
+    <p className={`goal-status ${focusStore.goalCompleted ? 'goal-success' : ''}`} role="status">
+      {focusStore.goalActive && <span className="goal-pulse" aria-hidden="true" />}{focusStore.goalStatus}
+    </p>
   </aside>;
 });
 

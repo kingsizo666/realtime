@@ -10,6 +10,7 @@ export class FocusStore {
   completed = false;
   timerError = '';
   goal = '';
+  goalStarted = false;
   goalCompleted = false;
   storage = null;
 
@@ -29,6 +30,7 @@ export class FocusStore {
       }
       if (typeof saved.goal === 'string') this.goal = saved.goal.slice(0, 1000);
       this.goalCompleted = saved.goalCompleted === true && Boolean(this.goal.trim());
+      this.goalStarted = Boolean(this.goal.trim()) && (saved.goalStarted === true || this.goalCompleted);
     } catch {
       // The panels remain usable if browser storage is disabled or corrupted.
     }
@@ -43,12 +45,16 @@ export class FocusStore {
   get timeLabel() { return `${String(Math.floor(this.secondsLeft / 60)).padStart(2, '0')}:${String(this.secondsLeft % 60).padStart(2, '0')}`; }
   get progress() { return Math.max(0, Math.min(1, 1 - this.secondsLeft * 1000 / this.durationMs)); }
   get timerStatus() { return this.completed ? 'Focus session complete.' : this.running ? 'Time to focus.' : this.remainingMs < this.durationMs ? 'Paused. Resume when ready.' : 'Ready when you are.'; }
+  get goalActive() { return this.goalStarted && !this.goalCompleted; }
+  get canSetGoal() { return Boolean(this.goal.trim()) && !this.goalActive; }
+  get goalStatus() { return this.goalCompleted ? 'Goal complete. Well done.' : this.goalActive ? 'In progress' : 'Set a goal to begin.'; }
 
   persist() {
     try {
       this.storage?.setItem(STORAGE_KEY, JSON.stringify({
         minutes: this.validMinutes ? this.minutes : '25', remainingMs: this.remainingMs,
-        deadline: this.deadline, completed: this.completed, goal: this.goal, goalCompleted: this.goalCompleted,
+        deadline: this.deadline, completed: this.completed, goal: this.goal,
+        goalStarted: this.goalStarted, goalCompleted: this.goalCompleted,
       }));
     } catch {}
   }
@@ -103,13 +109,25 @@ export class FocusStore {
   }
 
   setGoal(value) {
-    this.goal = value.slice(0, 1000);
+    const next = value.slice(0, 1000);
+    if (next === this.goal) return;
+    this.goal = next;
+    this.goalStarted = false;
     this.goalCompleted = false;
     this.persist();
   }
 
-  setGoalCompleted(value) {
-    this.goalCompleted = Boolean(value) && Boolean(this.goal.trim());
+  startGoal() {
+    if (!this.canSetGoal) return;
+    this.goal = this.goal.trim();
+    this.goalStarted = true;
+    this.goalCompleted = false;
+    this.persist();
+  }
+
+  completeGoal() {
+    if (!this.goalActive) return;
+    this.goalCompleted = true;
     this.persist();
   }
 }
