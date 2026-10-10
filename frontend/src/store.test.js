@@ -47,6 +47,34 @@ test('description blur save patches only the description', async () => {
   assert.equal(state.entries[0].started_at, completed.started_at);
 });
 
+test('an entry can be added and submitted without a description', async () => {
+  const state = new TimeStore();
+  state.loading = false;
+  state.form = { category: 'Research', description: '', date: '2026-01-01', startTime: '09:00', endTime: '' };
+  state.request = async (url, options) => {
+    assert.equal(JSON.parse(options.body).description, '');
+    return { entry: { ...pending, description: '', ...(url.endsWith('/finish/') ? { ended_at: completed.ended_at, is_submitted: true } : {}) } };
+  };
+  await state.save();
+  assert.equal(state.activeEntry.description, '');
+  await state.save();
+  assert.equal(state.activeEntry, undefined);
+  assert.equal(state.entries[0].description, '');
+  assert.equal(state.error, '');
+});
+
+test('description blur save can clear an existing description', async () => {
+  const state = new TimeStore();
+  state.entries = [completed];
+  state.request = async (url, options) => {
+    assert.deepEqual(JSON.parse(options.body), { description: '' });
+    return { entry: { ...completed, description: '' } };
+  };
+  assert.equal(await state.saveCell(1, 'description', ''), true);
+  assert.equal(state.entries[0].description, '');
+  assert.equal(state.entries[0].ended_at, completed.ended_at);
+});
+
 test('submit sends the selected end time and clears the form on success', async () => {
   const state = new TimeStore();
   state.loading = false;

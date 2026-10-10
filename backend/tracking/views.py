@@ -42,11 +42,11 @@ def read_data(request, allow_empty=False):
 
 def validate_entry(data, entry=None, final_end=None):
     category = data.get('category', entry.category if entry else None)
-    description = data.get('description', entry.description if entry else None)
+    description = data.get('description', entry.description if entry else '')
     if category not in CATEGORIES:
         raise ValueError('Choose one of the available categories.')
-    if not isinstance(description, str) or not description.strip():
-        raise ValueError('Add a description of your task.')
+    if not isinstance(description, str):
+        raise ValueError('Description must be text.')
     description = description.strip()
     if len(description) > 1000:
         raise ValueError('Description must be 1,000 characters or fewer.')

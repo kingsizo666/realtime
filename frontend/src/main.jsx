@@ -42,7 +42,7 @@ const EntryForm = observer(function EntryForm() {
             <option value="" disabled>Choose a category</option>
             {store.categories.map(category => <option key={category}>{category}</option>)}
           </select></label>
-          <label>Description<input type="text" placeholder="What are you working on?" required maxLength={1000} value={store.form.description} onChange={event => store.updateField('description', event.target.value)} /></label>
+          <label><span>Description <span className="optional">optional</span></span><input type="text" placeholder="What are you working on?" maxLength={1000} value={store.form.description} onChange={event => store.updateField('description', event.target.value)} /></label>
         </div>
         <div className="form-bottom">
           <label>Date<input type="date" required max={localFields().date} value={store.form.date} onChange={event => store.updateField('date', event.target.value)} /></label>
@@ -70,10 +70,11 @@ const EditableCell = observer(function EditableCell({ entry, field, value, child
   const committing = useRef(false);
   const isTime = field !== 'description';
   const label = field === 'description' ? 'Description' : field === 'startTime' ? 'Start time' : 'End time';
+  const entryLabel = entry.description || entry.category;
   async function commit() {
     if (committing.current) return;
     if (draft === value) { setEditing(false); setError(''); return; }
-    if (!draft.trim() && (field !== 'endTime' || entry.is_submitted)) {
+    if (!draft.trim() && (field === 'startTime' || (field === 'endTime' && entry.is_submitted))) {
       setError(`${label} is required.`);
       return;
     }
@@ -86,10 +87,10 @@ const EditableCell = observer(function EditableCell({ entry, field, value, child
     else setError('Not saved. Adjust the value and try again.');
   }
   return <span className={`editable-cell ${isTime ? 'editable-time' : 'editable-description'}`}>
-    {editing ? <input autoFocus className="cell-input" aria-label={`${label} for ${entry.description}`} type={isTime ? 'time' : 'text'} step={isTime ? 60 : undefined} maxLength={isTime ? undefined : 1000} value={draft} disabled={saving} onChange={event => { setDraft(event.target.value); setError(''); }} onBlur={commit} onKeyDown={event => {
+    {editing ? <input autoFocus className="cell-input" aria-label={`${label} for ${entryLabel}`} type={isTime ? 'time' : 'text'} step={isTime ? 60 : undefined} maxLength={isTime ? undefined : 1000} value={draft} disabled={saving} onChange={event => { setDraft(event.target.value); setError(''); }} onBlur={commit} onKeyDown={event => {
       if (event.key === 'Enter') { event.preventDefault(); event.currentTarget.blur(); }
       if (event.key === 'Escape') { event.preventDefault(); setDraft(value); setEditing(false); setError(''); }
-    }} /> : <button type="button" className="cell-value" disabled={store.saving} aria-label={`Change ${label.toLowerCase()} for ${entry.description}`} title="Click to edit; click elsewhere to save" onClick={() => { setDraft(value); setEditing(true); }}>{children || value || 'Add end time'}</button>}
+    }} /> : <button type="button" className="cell-value" disabled={store.saving} aria-label={`Change ${label.toLowerCase()} for ${entryLabel}`} title="Click to edit; click elsewhere to save" onClick={() => { setDraft(value); setEditing(true); }}>{children || value || (isTime ? 'Add end time' : '')}</button>}
     {error && <small className="cell-error" role="alert">{error}</small>}
   </span>;
 });
@@ -100,18 +101,19 @@ const Entries = observer(function Entries() {
     {store.entryError && <div className="feedback error entry-list-error" role="alert">{store.entryError}</div>}
     <div className="table-scroll">
       <table>
-        <thead><tr><th>Task</th><th>Start</th><th>End</th><th className="duration-column">Duration</th><th className="actions-column">Actions</th></tr></thead>
+        <thead><tr><th scope="col">Category</th><th scope="col">Description</th><th scope="col">Start</th><th scope="col">End</th><th scope="col" className="duration-column">Duration</th><th scope="col" className="actions-column">Actions</th></tr></thead>
         {groupEntriesByDate(store.entries).map(group => <tbody key={group.date}>
-          <tr className="date-group"><th scope="rowgroup" colSpan={5}>{new Date(group.entries[0].started_at).toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}</th></tr>
+          <tr className="date-group"><th scope="rowgroup" colSpan={6}><div className="date-group-heading"><span>{new Date(group.entries[0].started_at).toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}</span><span className="daily-total">Total: {formatDuration(group.totalSeconds)}</span></div></th></tr>
           {group.entries.map(entry => {
           const active = !entry.is_submitted;
           const overnight = entry.ended_at && localFields(entry.ended_at).date !== localFields(entry.started_at).date;
           return <tr key={entry.id} className={active ? 'active-row' : ''}>
-            <td className="task-cell"><div className="task-content"><span className="category-tag"><span />{entry.category}</span><span className="task-description"><EditableCell entry={entry} field="description" value={entry.description} /></span></div></td>
+            <td><span className="category-tag"><span />{entry.category}</span></td>
+            <td className="task-description"><EditableCell entry={entry} field="description" value={entry.description} /></td>
             <td className="time-cell"><EditableCell entry={entry} field="startTime" value={localFields(entry.started_at).time}>{formatClock(entry.started_at)}</EditableCell></td>
             <td className="time-cell"><EditableCell entry={entry} field="endTime" value={entry.ended_at ? localFields(entry.ended_at).time : ''}>{entry.ended_at ? formatClock(entry.ended_at) : <span className="running"><span className="status-dot" />Running</span>}</EditableCell>{overnight && <small className="end-date">Next day</small>}{entry.ended_at && active && <small className="end-date">Pending submit</small>}</td>
             <td className="duration-column"><span className={active ? 'live-duration' : ''}>{formatDuration(duration(entry, store.now))}</span>{active && <small className="end-date">In progress</small>}</td>
-            <td className="actions-column"><div className="row-actions"><button type="button" className="row-button delete-button" disabled={store.saving} aria-label={`Delete entry: ${entry.description}`} onClick={() => store.deleteEntry(entry)}>Delete</button></div></td>
+            <td className="actions-column"><div className="row-actions"><button type="button" className="row-button delete-button" disabled={store.saving} aria-label={`Delete entry: ${entry.description || entry.category}`} onClick={() => store.deleteEntry(entry)}>Delete</button></div></td>
           </tr>;
         })}</tbody>)}
       </table>

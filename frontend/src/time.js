@@ -31,6 +31,10 @@ export function duration(entry, now = Date.now()) {
   return Math.max(0, (new Date(entry.ended_at || now) - new Date(entry.started_at)) / 1000);
 }
 
+export function totalTrackedSeconds(entries) {
+  return entries.filter(entry => entry.is_submitted).reduce((sum, entry) => sum + duration(entry), 0);
+}
+
 export function formatDuration(seconds) {
   const minutes = Math.max(0, Math.floor(seconds / 60));
   const hours = Math.floor(minutes / 60);
@@ -47,7 +51,7 @@ export function groupEntriesByDate(entries) {
     if (!groups.has(date)) groups.set(date, []);
     groups.get(date).push(entry);
   }
-  return [...groups].sort(([a], [b]) => b.localeCompare(a)).map(([date, entries]) => ({ date, entries }));
+  return [...groups].sort(([a], [b]) => b.localeCompare(a)).map(([date, entries]) => ({ date, entries, totalSeconds: totalTrackedSeconds(entries) }));
 }
 
 export function formatClock(value) {

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { duration, entryCellPayload, entryPayload, formatDuration, groupEntriesByDate, localFields } from './time.js';
+import { duration, entryCellPayload, entryPayload, formatDuration, groupEntriesByDate, localFields, totalTrackedSeconds } from './time.js';
 
 test('optional end time remains null', () => {
   const payload = entryPayload({ category: 'Research', description: 'Read', date: '2026-01-05', startTime: '09:00', endTime: '' });
@@ -51,4 +51,24 @@ test('entries group by local start date, with newest dates and entries first', (
   assert.deepEqual(groups.map(group => group.entries.map(entry => entry.id)), [[4, 2], [3, 1]]);
   assert.deepEqual(entries.map(entry => entry.id), [1, 2, 3, 4]);
   assert.deepEqual(groupEntriesByDate([]), []);
+});
+
+test('daily totals sum submitted entries on their local start date, including overnight tasks', () => {
+  const timestamp = value => new Date(value).toISOString();
+  const entries = [
+    { id: 1, started_at: timestamp('2026-01-05T09:00:00'), ended_at: timestamp('2026-01-05T09:30:00'), is_submitted: true },
+    { id: 2, started_at: timestamp('2026-01-05T23:00:00'), ended_at: timestamp('2026-01-06T01:00:00'), is_submitted: true },
+    { id: 3, started_at: timestamp('2026-01-06T09:00:00'), ended_at: timestamp('2026-01-06T10:00:00'), is_submitted: true },
+    { id: 4, started_at: timestamp('2026-01-06T11:00:00'), ended_at: null, is_submitted: false },
+    { id: 5, started_at: timestamp('2026-01-06T12:00:00'), ended_at: timestamp('2026-01-06T13:00:00'), is_submitted: false },
+  ];
+  const groups = groupEntriesByDate(entries);
+  assert.deepEqual(groups.map(group => [group.date, formatDuration(group.totalSeconds)]), [['2026-01-06', '1h'], ['2026-01-05', '2h 30m']]);
+  assert.equal(groups.reduce((sum, group) => sum + group.totalSeconds, 0), totalTrackedSeconds(entries));
+  assert.equal(totalTrackedSeconds([]), 0);
+
+  entries[0].ended_at = timestamp('2026-01-05T10:00:00');
+  assert.equal(groupEntriesByDate(entries)[1].totalSeconds, 3 * 3600);
+  const remaining = entries.filter(entry => entry.id !== 2);
+  assert.equal(groupEntriesByDate(remaining)[1].totalSeconds, 3600);
 });

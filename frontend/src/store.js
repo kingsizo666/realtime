@@ -1,5 +1,5 @@
 import { makeAutoObservable, runInAction } from 'mobx';
-import { duration, entryCellPayload, entryPayload, localFields } from './time.js';
+import { entryCellPayload, entryPayload, localFields, totalTrackedSeconds } from './time.js';
 import { applyTheme, readTheme, saveTheme } from './theme.js';
 
 const emptyForm = () => ({ category: '', description: '', date: '', startTime: '', endTime: '' });
@@ -29,7 +29,7 @@ export class TimeStore {
   }
 
   get activeEntry() { return this.entries.find(entry => !entry.is_submitted); }
-  get totalSeconds() { return this.entries.filter(entry => entry.is_submitted).reduce((sum, entry) => sum + duration(entry), 0); }
+  get totalSeconds() { return totalTrackedSeconds(this.entries); }
   get completedCount() { return this.entries.filter(entry => entry.is_submitted).length; }
   get hasUnsavedForm() {
     if (!this.activeEntry) return Boolean(this.form.category || this.form.description || this.form.endTime);

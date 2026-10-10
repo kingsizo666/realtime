@@ -68,8 +68,7 @@ class EntryTests(TestCase):
     def test_validation(self):
         invalid = [
             {'category': 'Unknown'}, {'category': ['Research']},
-            {'description': ''}, {'description': '   '},
-            {'description': 'x' * 1001}, {'description': 17},
+            {'description': 'x' * 1001}, {'description': 17}, {'description': None},
             {'started_at': '2026-10-10T12:00:00'}, {'started_at': 'garbage'},
             {'started_at': (timezone.now() + timedelta(days=1)).isoformat()},
             {'ended_at': (timezone.now() - timedelta(days=1)).isoformat()},
@@ -83,6 +82,37 @@ class EntryTests(TestCase):
         for body in ['{', '[]', 'null']:
             self.assertEqual(self.client.post('/api/entries/', body, content_type='application/json').status_code, 400)
         self.assertEqual(self.client.post('/api/entries/999/finish/').status_code, 404)
+
+    def test_missing_empty_and_whitespace_descriptions_can_be_added_and_submitted(self):
+        for description in [None, '', '   ']:
+            with self.subTest(description=description):
+                payload = self.payload(description=description)
+                if description is None:
+                    del payload['description']
+                response = self.client.post('/api/entries/', json.dumps(payload), content_type='application/json')
+                self.assertEqual(response.status_code, 201)
+                entry_id = response.json()['entry']['id']
+                self.assertEqual(response.json()['entry']['description'], '')
+                finished = self.client.post(f'/api/entries/{entry_id}/finish/')
+                self.assertEqual(finished.status_code, 200)
+                self.assertEqual(finished.json()['entry']['description'], '')
+                self.assertTrue(finished.json()['entry']['is_submitted'])
+
+    def test_description_can_be_cleared_when_editing_or_submitting(self):
+        entry_id = self.create().json()['entry']['id']
+        url = f'/api/entries/{entry_id}/'
+        cleared = self.client.patch(url, json.dumps({'description': ''}), content_type='application/json')
+        self.assertEqual(cleared.status_code, 200)
+        self.assertEqual(cleared.json()['entry']['description'], '')
+        self.client.patch(url, json.dumps({'description': 'Updated task'}), content_type='application/json')
+        finished = self.client.post(f'{url}finish/', json.dumps({'description': ''}), content_type='application/json')
+        self.assertEqual(finished.status_code, 200)
+        self.assertEqual(finished.json()['entry']['description'], '')
+        self.client.patch(url, json.dumps({'description': 'Completed task'}), content_type='application/json')
+        cleared = self.client.patch(url, json.dumps({'description': '  '}), content_type='application/json')
+        self.assertEqual(cleared.status_code, 200)
+        self.assertEqual(cleared.json()['entry']['description'], '')
+        self.assertTrue(cleared.json()['entry']['is_submitted'])
 
     def test_csrf_protection(self):
         client = Client(enforce_csrf_checks=True)
@@ -187,7 +217,7 @@ class EntryTests(TestCase):
 
     def test_invalid_submit_keeps_unfinished_entry_unchanged(self):
         entry_id = self.create().json()['entry']['id']
-        response = self.client.post(f'/api/entries/{entry_id}/finish/', json.dumps({'description': ''}), content_type='application/json')
+        response = self.client.post(f'/api/entries/{entry_id}/finish/', json.dumps({'description': 17}), content_type='application/json')
         self.assertEqual(response.status_code, 400)
         entry = Entry.objects.get(pk=entry_id)
         self.assertFalse(entry.is_submitted)
@@ -213,7 +243,7 @@ class EntryTests(TestCase):
         original = self.create().json()['entry']
         self.client.post(f"/api/entries/{original['id']}/finish/")
         for payload in [
-            {'description': ''}, {'ended_at': None},
+            {'description': 17}, {'ended_at': None},
             {'started_at': (timezone.now() + timedelta(days=1)).isoformat()},
             {'ended_at': (timezone.now() - timedelta(days=1)).isoformat()},
             {'started_at': 'invalid'},

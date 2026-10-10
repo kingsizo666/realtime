@@ -10,7 +10,7 @@ CATEGORIES = [
 
 class Entry(models.Model):
     category = models.CharField(max_length=40, choices=[(name, name) for name in CATEGORIES])
-    description = models.CharField(max_length=1000)
+    description = models.CharField(max_length=1000, blank=True)
     started_at = models.DateTimeField()
     ended_at = models.DateTimeField(null=True, blank=True)
     is_submitted = models.BooleanField(default=False)
