@@ -4,6 +4,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
+from django.core.management import call_command
 from django.test import Client, TestCase, override_settings
 from django.utils import timezone
 
@@ -25,6 +26,16 @@ class EntryTests(TestCase):
     def test_categories_and_empty_list(self):
         response = self.client.get('/api/entries/')
         self.assertEqual(response.json(), {'entries': [], 'categories': CATEGORIES, 'can_shutdown': False})
+
+    def test_category_list_changes_work_without_new_migrations(self):
+        categories = [*reversed(CATEGORIES), 'Documentation']
+        with patch('tracking.models.CATEGORIES', categories), patch('tracking.views.CATEGORIES', categories):
+            self.assertEqual(self.client.get('/api/entries/').json()['categories'], categories)
+            Entry._meta.get_field('category').validate('Documentation', Entry())
+            response = self.create(category='Documentation')
+            self.assertEqual(response.status_code, 201)
+            self.assertEqual(response.json()['entry']['category'], 'Documentation')
+            call_command('makemigrations', 'tracking', check=True, dry_run=True, verbosity=0)
 
     def test_add_without_end_and_finish_at_server_time(self):
         response = self.create()

@@ -36,3 +36,9 @@ Double-click **Realtime.exe**. It opens DuckDuckGo when available, otherwise you
 Click **Stop app** to shut down.
 
 Keep the executable in the project root. Entries are saved in `backend/db.sqlite3`; personal data and generated files are excluded from Git.
+
+## Add your own task categories
+
+Edit the `CATEGORIES` list in `backend/tracking/models.py`.
+
+Stop and reopen **Realtime.exe**, then refresh the page. Category list changes need no migrations or frontend rebuild.

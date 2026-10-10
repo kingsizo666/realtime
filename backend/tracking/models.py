@@ -8,8 +8,12 @@ CATEGORIES = [
 ]
 
 
+def category_choices():
+    return [(name, name) for name in CATEGORIES]
+
+
 class Entry(models.Model):
-    category = models.CharField(max_length=40, choices=[(name, name) for name in CATEGORIES])
+    category = models.CharField(max_length=40, choices=category_choices)
     description = models.CharField(max_length=1000, blank=True)
     started_at = models.DateTimeField()
     ended_at = models.DateTimeField(null=True, blank=True)
