@@ -23,7 +23,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start.ps1
 
 This installs dependencies, builds the frontend, creates your database, and starts the app at http://127.0.0.1:8000.
 
-Once it loads, press **Ctrl+C** to stop it, then build the executable (excluded from Git):
+Once it loads, press **Ctrl+C** to stop it, then build the executable:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\build-launcher.ps1
