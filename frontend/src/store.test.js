@@ -5,7 +5,9 @@ import { TimeStore } from './store.js';
 const pending = { id: 1, category: 'Research', description: 'Read protocol', started_at: '2026-01-01T09:00:23.123456Z', ended_at: null, is_submitted: false };
 const completed = { ...pending, ended_at: '2026-01-01T10:00:23.123456Z', is_submitted: true };
 
-test('add, reload without seconds, modify, submit, and clear form', async () => {
+test('add, reload, modify, and submit resets the next entry to the current local date and time', async (t) => {
+  let currentTime = new Date(2026, 9, 10, 23, 59).getTime();
+  t.mock.method(Date, 'now', () => currentTime);
   const state = new TimeStore();
   state.request = async () => ({ entries: [], categories: ['Research'] });
   await state.load();
@@ -25,12 +27,13 @@ test('add, reload without seconds, modify, submit, and clear form', async () => 
     assert.equal(payload.description, 'Updated before submitting');
     assert.equal(new Date(payload.started_at).getMinutes(), 30);
     assert.equal(new Date(payload.started_at).getSeconds(), 0);
+    currentTime = new Date(2026, 9, 11, 0, 2).getTime();
     return { entry: completed };
   };
   await reloaded.save();
   assert.equal(reloaded.activeEntry, undefined);
   assert.equal(reloaded.totalSeconds, 3600);
-  assert.deepEqual({ ...reloaded.form }, { category: '', description: '', date: '', startTime: '', endTime: '' });
+  assert.deepEqual({ ...reloaded.form }, { category: '', description: '', date: '2026-10-11', startTime: '00:02', endTime: '' });
 });
 
 test('description blur save patches only the description', async () => {

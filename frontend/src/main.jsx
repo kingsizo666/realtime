@@ -7,6 +7,7 @@ import './styles.css';
 import { applyTheme } from './theme.js';
 import { focusStore } from './focus-store.js';
 import { spotifyStore } from './spotify-store.js';
+import { notesStore } from './notes-store.js';
 
 function Icon({ name = 'clock', size = 20 }) {
   const paths = {
@@ -176,7 +177,7 @@ const SpotifyPanel = observer(function SpotifyPanel() {
     {spotifyStore.connected ? <>
       {spotifyStore.playback?.name && <div className="spotify-track">
         <SpotifyCover key={spotifyStore.playback.image_url || spotifyStore.playback.name} url={spotifyStore.playback.image_url} name={spotifyStore.playback.name} />
-        <div className="spotify-track-info"><a href={spotifyStore.playback.url} target="_blank" rel="noreferrer" title={spotifyStore.playback.name}>{spotifyStore.playback.name}</a>{spotifyStore.playback.artist && <p title={spotifyStore.playback.artist}>{spotifyStore.playback.artist}</p>}</div>
+        <div className="spotify-track-info"><span className="spotify-track-title" title={spotifyStore.playback.name}>{spotifyStore.playback.name}</span>{spotifyStore.playback.artist && <p title={spotifyStore.playback.artist}>{spotifyStore.playback.artist}</p>}</div>
       </div>}
       {!spotifyStore.playback?.available && <p className="side-note spotify-status" role="status">{spotifyStore.statusText}</p>}
       <div className="spotify-controls">
@@ -197,10 +198,16 @@ const SpotifyPanel = observer(function SpotifyPanel() {
 
 const Notepad = observer(function Notepad() {
   const notesRef = useRef(null);
+  useEffect(() => {
+    notesStore.load(store.request);
+    window.addEventListener('pagehide', notesStore.flush);
+    return () => window.removeEventListener('pagehide', notesStore.flush);
+  }, []);
   return <aside className="panel side-panel notes-panel" aria-labelledby="notes-heading">
     <div className="panel-heading"><div className="heading-with-icon"><span className="soft-icon"><Icon name="note" size={14} /></span><h2 id="notes-heading">Notepad</h2></div></div>
-    <textarea ref={notesRef} className="notes-input" rows="8" aria-labelledby="notes-heading" placeholder="Write your notes…" value={focusStore.notes} onChange={event => focusStore.setNotes(event.target.value)} />
-    <div className="notes-actions"><button type="button" className="row-button" disabled={!focusStore.notes} onClick={() => { focusStore.clearNotes(); notesRef.current?.focus(); }}>Clear</button></div>
+    <textarea ref={notesRef} className="notes-input" rows="8" aria-labelledby="notes-heading" placeholder="Write your notes…" value={notesStore.notes} onChange={event => notesStore.setNotes(event.target.value)} onBlur={notesStore.flush} />
+    {notesStore.error && <div className="notes-error" role="alert">{notesStore.error}<button type="button" disabled={notesStore.loading || notesStore.saving} onClick={notesStore.retry}>Retry</button></div>}
+    <div className="notes-actions"><button type="button" className="row-button" disabled={!notesStore.notes} onClick={() => { notesStore.clearNotes(); notesRef.current?.focus(); }}>Clear</button></div>
   </aside>;
 });
 

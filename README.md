@@ -35,7 +35,7 @@ Double-click **Realtime.exe**. It opens DuckDuckGo when available, otherwise you
 
 Click **Stop app** to shut down.
 
-Keep the executable in the project root. Entries are saved in `backend/db.sqlite3`; personal data and generated files are excluded from Git.
+Keep the executable in the project root. Entries and automatically saved notepad text are stored in `backend/db.sqlite3` and restored on startup; personal data and generated files are excluded from Git.
 
 ## Add your own task categories
 

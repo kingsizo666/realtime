@@ -1,6 +1,7 @@
 import { makeAutoObservable, runInAction } from 'mobx';
 import { entryCellPayload, entryPayload, localFields, totalTrackedSeconds } from './time.js';
 import { applyTheme, readTheme, saveTheme } from './theme.js';
+import { notesStore } from './notes-store.js';
 
 const emptyForm = () => ({ category: '', description: '', date: '', startTime: '', endTime: '' });
 
@@ -43,6 +44,7 @@ export class TimeStore {
     this.stopping = true;
     this.shutdownError = '';
     try {
+      if (!await notesStore.flush()) throw new Error('Your notes could not be saved. Retry in the notepad before stopping.');
       await this.cellQueue;
       if (this.entryError) throw new Error('An entry change could not be saved. Fix it before stopping the app.');
       if (this.hasUnsavedForm && !window.confirm('Your form has unsaved changes. Stop the app and discard those changes? Saved entries will be kept.')) return;
@@ -165,7 +167,8 @@ export class TimeStore {
       runInAction(() => {
         if (active) {
           this.entries = this.entries.map(entry => entry.id === active.id ? data.entry : entry);
-          this.form = emptyForm();
+          const start = localFields(Date.now());
+          this.form = { ...emptyForm(), date: start.date, startTime: start.time };
           this.notice = 'Entry submitted. You’re ready for your next task.';
         } else {
           this.entries = [data.entry, ...this.entries].sort((a, b) => new Date(b.started_at) - new Date(a.started_at) || b.id - a.id);

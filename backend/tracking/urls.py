@@ -3,6 +3,7 @@ from . import views
 from . import spotify_views
 
 urlpatterns = [
+    path('notepad/', views.notepad),
     path('spotify/status/', spotify_views.status),
     path('spotify/connect/', spotify_views.connect),
     path('spotify/control/', spotify_views.control),
