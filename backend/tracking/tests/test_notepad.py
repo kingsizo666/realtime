@@ -2,7 +2,7 @@ import json
 
 from django.test import Client, TestCase
 
-from .models import Notepad
+from ..models import Notepad
 
 
 class NotepadTests(TestCase):

@@ -39,7 +39,7 @@ Keep the executable in the project root. Entries and automatically saved notepad
 
 ## Add your own task categories
 
-Edit the `CATEGORIES` list in `backend/tracking/models.py`.
+Edit the `CATEGORIES` list in `backend/tracking/models/entry.py`.
 
 Stop and reopen **Realtime.exe**, then refresh the page. Category list changes need no migrations or frontend rebuild.
 

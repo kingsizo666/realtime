@@ -7,8 +7,8 @@ from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET, require_POST
 
-from .spotify import SpotifyError, get_spotify_service
-from .views import read_data
+from ..spotify import SpotifyError, get_spotify_service
+from .common import read_data
 
 APP_ORIGINS = ('http://127.0.0.1:8000', 'http://127.0.0.1:5173')
 STATE_COOKIE = 'realtime_spotify_state'

@@ -21,5 +21,5 @@ TIME_ZONE = 'Europe/Amsterdam'
 USE_TZ = True
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CSRF_TRUSTED_ORIGINS = ['http://127.0.0.1:5173', 'http://localhost:5173']
-CSRF_FAILURE_VIEW = 'tracking.views.csrf_failure'
+CSRF_FAILURE_VIEW = 'tracking.views.common.csrf_failure'
 REALTIME_SHUTDOWN_FILE = os.getenv('REALTIME_SHUTDOWN_FILE', '')

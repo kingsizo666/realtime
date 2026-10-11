@@ -10,8 +10,8 @@ from urllib.parse import parse_qs, urlparse
 
 from django.test import Client, SimpleTestCase
 
-from .spotify import REDIRECT_URI, SCOPES, SpotifyError, SpotifyService
-from .spotify_views import STATE_COOKIE
+from ..spotify import REDIRECT_URI, SCOPES, SpotifyError, SpotifyService
+from ..views.spotify import STATE_COOKIE
 
 CLIENT_ID = 'a' * 32
 TOKENS = {'access_token': 'test-access', 'refresh_token': 'test-refresh', 'expires_in': 3600}
@@ -32,7 +32,7 @@ class SpotifyTests(SimpleTestCase):
         env = patch.dict('os.environ', {'SPOTIFY_CLIENT_ID': ''})
         env.start()
         self.addCleanup(env.stop)
-        service = patch('tracking.spotify_views.get_spotify_service', return_value=self.service)
+        service = patch('tracking.views.spotify.get_spotify_service', return_value=self.service)
         service.start()
         self.addCleanup(service.stop)
 

@@ -1,14 +1,12 @@
 import json
 from datetime import timedelta
-from pathlib import Path
-from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from django.core.management import call_command
-from django.test import Client, TestCase, override_settings
+from django.test import Client, TestCase
 from django.utils import timezone
 
-from .models import CATEGORIES, Entry
+from ..models import CATEGORIES, Entry
 
 
 class EntryTests(TestCase):
@@ -29,7 +27,7 @@ class EntryTests(TestCase):
 
     def test_category_list_changes_work_without_new_migrations(self):
         categories = [*reversed(CATEGORIES), 'Documentation']
-        with patch('tracking.models.CATEGORIES', categories), patch('tracking.views.CATEGORIES', categories):
+        with patch('tracking.models.entry.CATEGORIES', categories), patch('tracking.views.entry.CATEGORIES', categories):
             self.assertEqual(self.client.get('/api/entries/').json()['categories'], categories)
             Entry._meta.get_field('category').validate('Documentation', Entry())
             response = self.create(category='Documentation')
@@ -44,7 +42,7 @@ class EntryTests(TestCase):
         self.assertIsNone(entry['ended_at'])
         self.assertFalse(entry['is_submitted'])
         now = timezone.now()
-        with patch('tracking.views.timezone.now', return_value=now):
+        with patch('tracking.views.entry.timezone.now', return_value=now):
             finished = self.client.post(f"/api/entries/{entry['id']}/finish/")
         self.assertEqual(finished.status_code, 200)
         self.assertEqual(Entry.objects.get().ended_at, now)
@@ -56,7 +54,7 @@ class EntryTests(TestCase):
         response = self.create(ended_at=selected_end.isoformat())
         entry_id = response.json()['entry']['id']
         now = timezone.now()
-        with patch('tracking.views.timezone.now', return_value=now):
+        with patch('tracking.views.entry.timezone.now', return_value=now):
             self.client.post(f'/api/entries/{entry_id}/finish/')
         self.assertEqual(Entry.objects.get().ended_at, selected_end)
         self.assertTrue(Entry.objects.get().is_submitted)
@@ -66,7 +64,7 @@ class EntryTests(TestCase):
         first_response = self.client.post(f'/api/entries/{entry_id}/finish/')
         self.assertEqual(first_response.status_code, 200)
         first = first_response.json()
-        with patch('tracking.views.timezone.now', return_value=timezone.now() + timedelta(hours=1)):
+        with patch('tracking.views.entry.timezone.now', return_value=timezone.now() + timedelta(hours=1)):
             second = self.client.post(f'/api/entries/{entry_id}/finish/').json()
         self.assertEqual(first, second)
 
@@ -137,7 +135,7 @@ class EntryTests(TestCase):
         from datetime import datetime
         start = datetime.fromisoformat('2026-08-08T09:00:00+02:00')
         now = datetime.fromisoformat('2026-08-10T10:00:00+02:00')
-        with patch('tracking.views.timezone.now', return_value=now):
+        with patch('tracking.views.entry.timezone.now', return_value=now):
             entry_id = self.create(started_at=start.isoformat()).json()['entry']['id']
             self.client.post(f'/api/entries/{entry_id}/finish/')
         entry = Entry.objects.get(pk=entry_id)
@@ -166,7 +164,7 @@ class EntryTests(TestCase):
     def test_historical_submit_can_roll_into_next_day(self):
         from datetime import datetime
         now = datetime.fromisoformat('2026-08-10T01:00:00+02:00')
-        with patch('tracking.views.timezone.now', return_value=now):
+        with patch('tracking.views.entry.timezone.now', return_value=now):
             entry_id = self.create(started_at='2026-08-08T23:00:00+02:00').json()['entry']['id']
             response = self.client.post(f'/api/entries/{entry_id}/finish/')
         self.assertEqual(response.status_code, 200)
@@ -177,20 +175,11 @@ class EntryTests(TestCase):
         self.assertEqual(self.client.delete('/api/entries/').status_code, 405)
         self.assertEqual(self.client.get('/api/entries/1/finish/').status_code, 405)
 
-    def test_frontend_rebuild_uses_latest_asset_references(self):
-        with TemporaryDirectory() as directory, override_settings(PROJECT_DIR=Path(directory)):
-            index = Path(directory) / 'frontend' / 'dist' / 'index.html'
-            index.parent.mkdir(parents=True)
-            index.write_text('<script src="/assets/first.js"></script>', encoding='utf-8')
-            self.assertContains(self.client.get('/'), 'first.js')
-            index.write_text('<script src="/assets/second.js"></script>', encoding='utf-8')
-            self.assertContains(self.client.get('/'), 'second.js')
-
     def test_submit_saves_changed_fields_and_selected_end_atomically(self):
         entry_id = self.create().json()['entry']['id']
         now = timezone.now()
         start = now - timedelta(hours=2)
-        with patch('tracking.views.timezone.now', return_value=now):
+        with patch('tracking.views.entry.timezone.now', return_value=now):
             response = self.client.post(f'/api/entries/{entry_id}/finish/', json.dumps({
                 'category': 'Automated Reasoning', 'description': 'Changed before submit',
                 'started_at': start.isoformat(), 'ended_at': (now - timedelta(minutes=5)).isoformat(),
@@ -205,7 +194,7 @@ class EntryTests(TestCase):
     def test_clearing_preselected_end_uses_current_time(self):
         entry_id = self.create(ended_at=(timezone.now() - timedelta(minutes=20)).isoformat()).json()['entry']['id']
         now = timezone.now()
-        with patch('tracking.views.timezone.now', return_value=now):
+        with patch('tracking.views.entry.timezone.now', return_value=now):
             response = self.client.post(f'/api/entries/{entry_id}/finish/', json.dumps({'ended_at': None}), content_type='application/json')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(Entry.objects.get().ended_at, now)
@@ -292,32 +281,3 @@ class EntryTests(TestCase):
         self.assertEqual(client.patch(f'/api/entries/{entry_id}/', '{}', content_type='application/json').status_code, 403)
         self.assertEqual(client.delete(f'/api/entries/{entry_id}/').status_code, 403)
         self.assertTrue(Entry.objects.filter(pk=entry_id).exists())
-
-
-class ShutdownTests(TestCase):
-    def test_unmanaged_server_does_not_offer_or_allow_shutdown(self):
-        with override_settings(REALTIME_SHUTDOWN_FILE=''):
-            self.assertFalse(self.client.get('/api/entries/').json()['can_shutdown'])
-            self.assertEqual(self.client.post('/api/shutdown/').status_code, 409)
-
-    def test_shutdown_requires_local_post_with_csrf_and_keeps_entries(self):
-        Entry.objects.create(category='Research', description='Keep this task', started_at=timezone.now() - timedelta(minutes=5))
-        with TemporaryDirectory() as directory:
-            signal = Path(directory) / 'stop.signal'
-            with override_settings(REALTIME_SHUTDOWN_FILE=str(signal)):
-                client = Client(enforce_csrf_checks=True)
-                self.assertTrue(client.get('/api/entries/').json()['can_shutdown'])
-                token = client.cookies['csrftoken'].value
-                self.assertEqual(client.get('/api/shutdown/').status_code, 405)
-                self.assertEqual(client.post('/api/shutdown/').status_code, 403)
-                self.assertEqual(client.post('/api/shutdown/', HTTP_X_CSRFTOKEN=token, REMOTE_ADDR='192.0.2.1').status_code, 403)
-                self.assertFalse(signal.exists())
-                response = client.post('/api/shutdown/', HTTP_X_CSRFTOKEN=token)
-                self.assertEqual(response.json(), {'stopping': True})
-                self.assertEqual(signal.read_text(), 'stop')
-                self.assertEqual(Entry.objects.count(), 1)
-                self.assertFalse(Entry.objects.get().is_submitted)
-
-    def test_shutdown_io_failure_is_reported(self):
-        with TemporaryDirectory() as directory, override_settings(REALTIME_SHUTDOWN_FILE=directory):
-            self.assertEqual(self.client.post('/api/shutdown/').status_code, 503)

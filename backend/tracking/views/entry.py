@@ -1,22 +1,15 @@
-import json
-from ipaddress import ip_address
-from pathlib import Path
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.conf import settings
 from django.db import IntegrityError
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods, require_POST
-from django.views.static import serve
 
-from .models import CATEGORIES, Entry, Notepad
-
-
-def csrf_failure(request, reason=''):
-    return JsonResponse({'error': 'Your session expired. Refresh the page and try again.'}, status=403)
+from ..models import CATEGORIES, Entry
+from .common import read_data
 
 
 def parse_timestamp(value, label):
@@ -29,39 +22,6 @@ def parse_timestamp(value, label):
     if timezone.is_naive(result):
         raise ValueError(f'{label} must include a timezone.')
     return result
-
-
-def read_data(request, allow_empty=False):
-    if allow_empty and request.content_type in ('multipart/form-data', 'application/x-www-form-urlencoded') and not request.POST:
-        return {}
-    data = json.loads(request.body or (b'{}' if allow_empty else b''))
-    if not isinstance(data, dict):
-        raise ValueError('Please provide an entry object.')
-    return data
-
-
-@ensure_csrf_cookie
-@require_http_methods(['GET', 'PUT'])
-def notepad(request):
-    try:
-        if not ip_address(request.META.get('REMOTE_ADDR', '')).is_loopback:
-            return JsonResponse({'error': 'Notes are available only on this computer.'}, status=403)
-    except ValueError:
-        return JsonResponse({'error': 'Notes are available only on this computer.'}, status=403)
-    if request.method == 'GET':
-        saved = Notepad.objects.filter(pk=1).first()
-        response = JsonResponse({'notes': saved.notes if saved else '', 'exists': saved is not None})
-    else:
-        try:
-            data = json.loads(request.body)
-            if not isinstance(data, dict) or not isinstance(data.get('notes'), str):
-                raise ValueError
-        except (ValueError, UnicodeDecodeError):
-            return JsonResponse({'error': 'Please provide notes as text.'}, status=400)
-        saved, _ = Notepad.objects.update_or_create(pk=1, defaults={'notes': data['notes']})
-        response = JsonResponse({'notes': saved.notes, 'exists': True})
-    response['Cache-Control'] = 'no-store'
-    return response
 
 
 def validate_entry(data, entry=None, final_end=None):
@@ -171,32 +131,3 @@ def entry_detail(request, entry_id):
         return JsonResponse({'entry': entry.as_dict()})
     except (ValueError, UnicodeDecodeError) as error:
         return JsonResponse({'error': str(error)}, status=400)
-
-
-@ensure_csrf_cookie
-def frontend(request):
-    index = settings.PROJECT_DIR / 'frontend' / 'dist' / 'index.html'
-    if not index.exists():
-        return HttpResponse('Build the frontend with npm.cmd run build in frontend/, or use the Vite development server.', status=503)
-    return HttpResponse(index.read_text(encoding='utf-8'))
-
-
-def frontend_asset(request, path):
-    return serve(request, path, document_root=settings.PROJECT_DIR / 'frontend' / 'dist' / 'assets')
-
-
-@require_POST
-def shutdown(request):
-    if not settings.REALTIME_SHUTDOWN_FILE:
-        return JsonResponse({'error': 'Open the app using Realtime.exe to use Stop app.'}, status=409)
-    try:
-        local_request = ip_address(request.META.get('REMOTE_ADDR', '')).is_loopback
-    except ValueError:
-        local_request = False
-    if not local_request:
-        return JsonResponse({'error': 'The app can only be stopped from this computer.'}, status=403)
-    try:
-        Path(settings.REALTIME_SHUTDOWN_FILE).write_text('stop', encoding='utf-8')
-    except OSError:
-        return JsonResponse({'error': 'Could not stop the app. Please try again.'}, status=503)
-    return JsonResponse({'stopping': True})

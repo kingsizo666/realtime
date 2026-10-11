@@ -1,6 +1,6 @@
 from django.urls import include, path, re_path
-from tracking.views import frontend, frontend_asset
-from tracking.spotify_views import callback as spotify_callback
+from tracking.views.frontend import frontend, frontend_asset
+from tracking.views.spotify import callback as spotify_callback
 
 urlpatterns = [
     path('spotify/callback', spotify_callback),
