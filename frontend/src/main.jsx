@@ -9,26 +9,7 @@ import { focusStore } from './focus-store.js';
 import { spotifyStore } from './spotify-store.js';
 import { notesStore } from './notes-store.js';
 import { ConfigurationPage } from './pages/Configuration.jsx';
-
-function Icon({ name = 'clock', size = 20 }) {
-  const paths = {
-    clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3.5 2" /></>,
-    plus: <path d="M12 5v14M5 12h14" />,
-    check: <path d="m5 12 4 4L19 6" />,
-    list: <><path d="M9 6h11M9 12h11M9 18h11" /><path d="M4 6h.01M4 12h.01M4 18h.01" /></>,
-    arrow: <><path d="M5 12h14m-5-5 5 5-5 5" /></>,
-    sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></>,
-    target: <><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1" /></>,
-    note: <><path d="M14 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-9" /><path d="m16 3 5 5-9 9-5 1 1-5 8-10Z" /></>,
-    music: <><path d="M9 18V5l12-2v13M9 9l12-2" /><ellipse cx="6" cy="18" rx="3" ry="3" /><ellipse cx="18" cy="16" rx="3" ry="3" /></>,
-    play: <path d="m9 5 10 7-10 7Z" />,
-    pause: <><path d="M8 5v14M16 5v14" /></>,
-    previous: <><path d="M5 5v14m14-14-10 7 10 7Z" /></>,
-    next: <><path d="M19 5v14M5 5l10 7-10 7Z" /></>,
-    power: <><path d="M12 3v9M7 5.5a9 9 0 1 0 10 0" /></>,
-  };
-  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
-}
+import { Icon } from './components/Icon.jsx';
 
 const EntryForm = observer(function EntryForm() {
   const categoryRef = useRef(null);
