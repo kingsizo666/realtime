@@ -6,7 +6,7 @@ from django.core.management import call_command
 from django.test import Client, TestCase
 from django.utils import timezone
 
-from ..models import CATEGORIES, Entry
+from ..models import Category, Entry
 
 
 class EntryTests(TestCase):
@@ -23,17 +23,15 @@ class EntryTests(TestCase):
 
     def test_categories_and_empty_list(self):
         response = self.client.get('/api/entries/')
-        self.assertEqual(response.json(), {'entries': [], 'categories': CATEGORIES, 'can_shutdown': False})
+        self.assertEqual(response.json(), {'entries': [], 'categories': list(Category.objects.filter(is_active=True).values_list('name', flat=True)), 'can_shutdown': False})
 
     def test_category_list_changes_work_without_new_migrations(self):
-        categories = [*reversed(CATEGORIES), 'Documentation']
-        with patch('tracking.models.entry.CATEGORIES', categories), patch('tracking.views.entry.CATEGORIES', categories):
-            self.assertEqual(self.client.get('/api/entries/').json()['categories'], categories)
-            Entry._meta.get_field('category').validate('Documentation', Entry())
-            response = self.create(category='Documentation')
-            self.assertEqual(response.status_code, 201)
-            self.assertEqual(response.json()['entry']['category'], 'Documentation')
-            call_command('makemigrations', 'tracking', check=True, dry_run=True, verbosity=0)
+        Category.objects.create(name='Documentation')
+        self.assertIn('Documentation', self.client.get('/api/entries/').json()['categories'])
+        response = self.create(category='Documentation')
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()['entry']['category'], 'Documentation')
+        call_command('makemigrations', 'tracking', check=True, dry_run=True, verbosity=0)
 
     def test_add_without_end_and_finish_at_server_time(self):
         response = self.create()

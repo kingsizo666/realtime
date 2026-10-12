@@ -8,26 +8,8 @@ import { applyTheme } from './theme.js';
 import { focusStore } from './focus-store.js';
 import { spotifyStore } from './spotify-store.js';
 import { notesStore } from './notes-store.js';
-
-function Icon({ name = 'clock', size = 20 }) {
-  const paths = {
-    clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3.5 2" /></>,
-    plus: <path d="M12 5v14M5 12h14" />,
-    check: <path d="m5 12 4 4L19 6" />,
-    list: <><path d="M9 6h11M9 12h11M9 18h11" /><path d="M4 6h.01M4 12h.01M4 18h.01" /></>,
-    arrow: <><path d="M5 12h14m-5-5 5 5-5 5" /></>,
-    sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></>,
-    target: <><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1" /></>,
-    note: <><path d="M14 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-9" /><path d="m16 3 5 5-9 9-5 1 1-5 8-10Z" /></>,
-    music: <><path d="M9 18V5l12-2v13M9 9l12-2" /><ellipse cx="6" cy="18" rx="3" ry="3" /><ellipse cx="18" cy="16" rx="3" ry="3" /></>,
-    play: <path d="m9 5 10 7-10 7Z" />,
-    pause: <><path d="M8 5v14M16 5v14" /></>,
-    previous: <><path d="M5 5v14m14-14-10 7 10 7Z" /></>,
-    next: <><path d="M19 5v14M5 5l10 7-10 7Z" /></>,
-    power: <><path d="M12 3v9M7 5.5a9 9 0 1 0 10 0" /></>,
-  };
-  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
-}
+import { ConfigurationPage } from './pages/Configuration.jsx';
+import { Icon } from './components/Icon.jsx';
 
 const EntryForm = observer(function EntryForm() {
   const categoryRef = useRef(null);
@@ -49,6 +31,7 @@ const EntryForm = observer(function EntryForm() {
           <label>Category<select ref={categoryRef} required value={store.form.category} onChange={event => store.updateField('category', event.target.value)}>
             <option value="" disabled>Choose a category</option>
             {store.categories.map(category => <option key={category}>{category}</option>)}
+            {active && !store.categories.includes(active.category) && <option value={active.category}>{active.category} (removed)</option>}
           </select></label>
           <label><span>Description <span className="optional">optional</span></span><input type="text" placeholder="What are you working on?" maxLength={1000} value={store.form.description} onChange={event => store.updateField('description', event.target.value)} /></label>
         </div>
@@ -60,7 +43,7 @@ const EntryForm = observer(function EntryForm() {
       </fieldset>
       <div className="form-actions">
         {active && <p><Icon size={15} />{store.form.endTime ? 'Submit saves your changes and keeps the selected end time.' : 'Submit saves your changes and uses the current clock time.'}</p>}
-        <button type="submit" className="primary-button" disabled={store.saving || store.loading || !store.categories.length}>
+        <button type="submit" className="primary-button" disabled={store.saving || store.loading || (!store.categories.length && !active)}>
           <Icon name={active ? 'check' : 'plus'} size={14} />{store.saving ? 'Saving…' : active ? 'Submit' : 'Add entry'}
         </button>
       </div>
@@ -212,15 +195,29 @@ const Notepad = observer(function Notepad() {
 });
 
 const App = observer(function App() {
+  const currentPage = () => /^\/configuration\/?$/.test(window.location.pathname) ? 'configuration' : 'tracker';
+  const [page, setPage] = useState(currentPage);
+  useEffect(() => {
+    const onPopState = () => setPage(currentPage());
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+  function navigate(event, nextPage) {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    document.activeElement?.blur();
+    window.history.pushState(null, '', nextPage === 'configuration' ? '/configuration' : '/');
+    setPage(nextPage);
+  }
   useEffect(() => {
     store.load();
     const timer = window.setInterval(() => { if (!store.stopped) { store.tick(); focusStore.tick(); } }, 1000);
     return () => window.clearInterval(timer);
   }, []);
   return <>
-    <header className="site-header"><div className="header-layout"><div className="header-inner"><a className="brand" href="/" aria-label="Realtime home"><span className="brand-mark"><Icon size={15} /></span>realtime<span className="brand-dot">.</span></a><div className="header-actions"><button type="button" className="theme-toggle" aria-label={store.theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} title={store.theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} aria-pressed={store.theme === 'dark'} onClick={store.toggleTheme}><Icon name="sun" size={16} /></button></div></div></div></header>
+    <header className="site-header"><div className="header-layout"><div className="header-inner"><a className="brand" href="/" aria-label="Realtime home" onClick={event => navigate(event, 'tracker')}><span className="brand-mark"><Icon size={15} /></span>realtime<span className="brand-dot">.</span></a><div className="header-actions"><nav className="header-nav" aria-label="Main navigation"><a href="/" aria-current={page === 'tracker' ? 'page' : undefined} onClick={event => navigate(event, 'tracker')}>Tracker</a><a href="/configuration" aria-current={page === 'configuration' ? 'page' : undefined} onClick={event => navigate(event, 'configuration')}>Configuration</a></nav><button type="button" className="theme-toggle" aria-label={store.theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} title={store.theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} aria-pressed={store.theme === 'dark'} onClick={store.toggleTheme}><Icon name="sun" size={16} /></button></div></div></div></header>
     <main>
-      <div className="workspace-layout">
+      <div className="workspace-layout" hidden={page !== 'tracker' && !store.stopped}>
         {store.stopped ? <section className="panel stopped-panel tracker-column" role="status"><span className="soft-icon"><Icon name="power" size={16} /></span><h1>Realtime is stopped</h1><p>Your saved entries are kept. Open Realtime.exe to start again.</p></section> : <>
         <div className="side-column"><FocusTimer /><SpotifyPanel /></div>
         <div className="tracker-column">
@@ -232,6 +229,7 @@ const App = observer(function App() {
         <div className="side-column"><GoalPanel /><Notepad /></div>
         </>}
       </div>
+      <div className="workspace-layout" hidden={page !== 'configuration' || store.stopped}><ConfigurationPage active={page === 'configuration' && !store.stopped} /></div>
     </main>
   </>;
 });

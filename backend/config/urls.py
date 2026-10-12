@@ -6,5 +6,7 @@ urlpatterns = [
     path('spotify/callback', spotify_callback),
     path('api/', include('tracking.urls')),
     path('', frontend),
+    path('configuration', frontend),
+    path('configuration/', frontend),
     re_path(r'^assets/(?P<path>.*)$', frontend_asset),
 ]

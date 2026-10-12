@@ -39,9 +39,7 @@ Keep the executable in the project root. Entries and automatically saved notepad
 
 ## Add your own task categories
 
-Edit the `CATEGORIES` list in `backend/tracking/models/entry.py`.
-
-Stop and reopen **Realtime.exe**, then refresh the page. Category list changes need no migrations or frontend rebuild.
+Open **Configuration** in the app to add, rename, or remove categories. Changes apply immediately and are saved in the database; no code edits, migrations, or rebuilds are needed when changing categories. Renaming updates existing entries; removing a category keeps their history.
 
 ## Connect Spotify
 

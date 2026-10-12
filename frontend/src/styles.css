@@ -2,6 +2,7 @@
 
 :root { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #242536; background: #f7f8fb; font-synthesis: none; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body { margin: 0; }
 button, input, select, textarea { font: inherit; }
 button, a, input, select { -webkit-tap-highlight-color: transparent; }
@@ -12,6 +13,20 @@ button, a, input, select { -webkit-tap-highlight-color: transparent; }
 .brand-mark { display: grid; place-items: center; width: 22px; height: 22px; margin-right: 6px; border-radius: 6px; background: #7059df; color: white; }
 .brand-dot { color: #7059df; }
 .header-actions { display: flex; align-items: center; gap: 10px; }
+.header-nav { display: flex; gap: 4px; }
+.header-nav a { padding: 4px 6px; border-radius: 4px; font-size: 10px; text-decoration: none; color: #838594; }
+.header-nav a:hover, .header-nav a[aria-current='page'] { color: #7059d9; background: #f1eefb; }
+.configuration-panel { padding: 12px; max-width: 480px; }
+.configuration-page { grid-column: 1 / -1; }
+.category-add-form { display: flex; align-items: flex-end; gap: 8px; }
+.category-add-form label { flex: 1; min-width: 0; }
+.category-list { display: grid; gap: 6px; padding: 0; margin: 12px 0; list-style: none; }
+.category-row { display: flex; align-items: center; gap: 6px; }
+.category-row input { flex: 1; min-width: 0; }
+.category-row .row-button { padding: 5px 8px; }
+.configuration-panel .category-icon-button { display: grid; place-items: center; flex: 0 0 28px; width: 28px; min-width: 28px; height: 28px; padding: 0; }
+[data-theme='dark'] .header-nav a { color: #a4a3b7; }
+[data-theme='dark'] .header-nav a:hover, [data-theme='dark'] .header-nav a[aria-current='page'] { color: #baabf2; background: #302942; }
 .theme-toggle { width: 26px; height: 26px; display: grid; place-items: center; padding: 0; border: 1px solid transparent; border-radius: 5px; color: #746a91; background: transparent; cursor: pointer; }
 .theme-toggle:hover { color: #7059d9; background: #f1eefb; border-color: #e6e1f4; }
 main { max-width: 1424px; margin: 0 auto; padding: 12px 20px; }
@@ -84,7 +99,7 @@ main { max-width: 1424px; margin: 0 auto; padding: 12px 20px; }
 .tracker-intro { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .stop-app-button { display: inline-flex; align-items: center; gap: 5px; padding: 3px 6px; border: 1px solid #e2e4ed; border-radius: 4px; background: transparent; color: #838594; font-size: 10px; cursor: pointer; }
 .stop-app-button:hover { background: #fff0f1; border-color: #f0cdd0; color: #b0444c; }
-.stop-app-button:disabled { opacity: .5; cursor: wait; }
+.stop-app-button:disabled { opacity: .5; cursor: default; }
 .shutdown-error { margin: 0 0 10px; }
 .stopped-panel { grid-column: 2; padding: 24px; text-align: center; }
 .stopped-panel .soft-icon { margin: 0 auto 10px; width: 30px; height: 30px; }
@@ -113,7 +128,7 @@ input:disabled, select:disabled { background: #f8f8fc; color: #77788a; opacity: 
 .form-actions p svg { flex-shrink: 0; color: #a7a6b6; }
 .primary-button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap; min-width: 86px; padding: 5px 10px; color: #fff; background: #7059d9; border: 1px solid #7059d9; border-radius: 4px; font-size: 11px; font-weight: 550; cursor: pointer; box-shadow: 0 2px 4px #7059d91c; }
 .primary-button:hover { background: #6048c8; }
-.primary-button:disabled { opacity: .55; cursor: wait; }
+.primary-button:disabled { opacity: .55; cursor: default; }
 button:focus-visible, a:focus-visible { outline: 3px solid #b6a7f2; outline-offset: 3px; }
 .feedback { font-size: 11px; margin-top: 8px; padding: 6px 8px; border-radius: 4px; line-height: 1.4; }
 .error { color: #b0444c; background: #fff0f1; }
@@ -154,12 +169,12 @@ tbody tr:last-child td { border-bottom: 0; }
 .row-button:hover { background: #f5f3fc; }
 .delete-button { color: #b0444c; }
 .delete-button:hover { background: #fff0f1; border-color: #f0cdd0; }
-.row-button:disabled { opacity: .55; cursor: wait; }
+.row-button:disabled { opacity: .55; cursor: default; }
 .editable-cell { display: inline-block; max-width: 100%; vertical-align: middle; }
 .editable-time { width: 100%; }
 .cell-value { border: 1px solid transparent; background: transparent; color: inherit; font: inherit; text-align: left; padding: 3px 4px; margin: -3px -4px; border-radius: 4px; cursor: text; max-width: 100%; overflow-wrap: anywhere; white-space: pre-wrap; }
 .cell-value:hover { background: #f3f0fb; border-color: #e3dcf5; }
-.cell-value:disabled { cursor: wait; }
+.cell-value:disabled { cursor: default; }
 .cell-input { height: 26px; font-size: 12px; padding: 0 5px; min-width: 0; }
 .editable-description { display: block; width: 100%; }
 .editable-description .cell-value { display: block; width: 100%; min-height: 24px; max-width: none; margin: 0; white-space: normal; overflow-wrap: break-word; word-break: normal; }
