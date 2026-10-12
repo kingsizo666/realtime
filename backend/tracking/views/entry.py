@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods, require_POST
 
-from ..models import CATEGORIES, Entry
+from ..models import Category, Entry
 from .common import read_data
 
 
@@ -27,7 +27,8 @@ def parse_timestamp(value, label):
 def validate_entry(data, entry=None, final_end=None):
     category = data.get('category', entry.category if entry else None)
     description = data.get('description', entry.description if entry else '')
-    if category not in CATEGORIES:
+    unchanged = entry is not None and category == entry.category
+    if not isinstance(category, str) or (not unchanged and not Category.objects.filter(name=category, is_active=True).exists()):
         raise ValueError('Choose one of the available categories.')
     if not isinstance(description, str):
         raise ValueError('Description must be text.')
@@ -79,7 +80,7 @@ def validate_entry(data, entry=None, final_end=None):
 @require_http_methods(['GET', 'POST'])
 def entries(request):
     if request.method == 'GET':
-        return JsonResponse({'entries': [entry.as_dict() for entry in Entry.objects.all()], 'categories': CATEGORIES, 'can_shutdown': bool(settings.REALTIME_SHUTDOWN_FILE)})
+        return JsonResponse({'entries': [entry.as_dict() for entry in Entry.objects.all()], 'categories': list(Category.objects.filter(is_active=True).values_list('name', flat=True)), 'can_shutdown': bool(settings.REALTIME_SHUTDOWN_FILE)})
     try:
         values = validate_entry(read_data(request))
         if Entry.objects.filter(is_submitted=False).exists():

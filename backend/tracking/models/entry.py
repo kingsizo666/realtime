@@ -1,19 +1,13 @@
 from django.db import models
 
-CATEGORIES = [
-    'Research',
-    'System Validation',
-    'Automated Reasoning',
-    'Networked Embedded Systems',
-]
-
 
 def category_choices():
-    return [(name, name) for name in CATEGORIES]
+    # Kept for historical migration imports; current categories live in the database.
+    return []
 
 
 class Entry(models.Model):
-    category = models.CharField(max_length=40, choices=category_choices)
+    category = models.CharField(max_length=40)
     description = models.CharField(max_length=1000, blank=True)
     started_at = models.DateTimeField()
     ended_at = models.DateTimeField(null=True, blank=True)

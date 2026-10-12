@@ -1,4 +1,5 @@
-from .entry import CATEGORIES, Entry, category_choices
+from .category import Category
+from .entry import Entry, category_choices
 from .notepad import Notepad
 
-__all__ = ["CATEGORIES", "Entry", "Notepad", "category_choices"]
+__all__ = ['Category', 'Entry', 'Notepad', 'category_choices']

@@ -8,6 +8,7 @@ import { applyTheme } from './theme.js';
 import { focusStore } from './focus-store.js';
 import { spotifyStore } from './spotify-store.js';
 import { notesStore } from './notes-store.js';
+import { ConfigurationPage } from './pages/Configuration.jsx';
 
 function Icon({ name = 'clock', size = 20 }) {
   const paths = {
@@ -49,6 +50,7 @@ const EntryForm = observer(function EntryForm() {
           <label>Category<select ref={categoryRef} required value={store.form.category} onChange={event => store.updateField('category', event.target.value)}>
             <option value="" disabled>Choose a category</option>
             {store.categories.map(category => <option key={category}>{category}</option>)}
+            {active && !store.categories.includes(active.category) && <option value={active.category}>{active.category} (removed)</option>}
           </select></label>
           <label><span>Description <span className="optional">optional</span></span><input type="text" placeholder="What are you working on?" maxLength={1000} value={store.form.description} onChange={event => store.updateField('description', event.target.value)} /></label>
         </div>
@@ -60,7 +62,7 @@ const EntryForm = observer(function EntryForm() {
       </fieldset>
       <div className="form-actions">
         {active && <p><Icon size={15} />{store.form.endTime ? 'Submit saves your changes and keeps the selected end time.' : 'Submit saves your changes and uses the current clock time.'}</p>}
-        <button type="submit" className="primary-button" disabled={store.saving || store.loading || !store.categories.length}>
+        <button type="submit" className="primary-button" disabled={store.saving || store.loading || (!store.categories.length && !active)}>
           <Icon name={active ? 'check' : 'plus'} size={14} />{store.saving ? 'Saving…' : active ? 'Submit' : 'Add entry'}
         </button>
       </div>
@@ -212,15 +214,29 @@ const Notepad = observer(function Notepad() {
 });
 
 const App = observer(function App() {
+  const currentPage = () => /^\/configuration\/?$/.test(window.location.pathname) ? 'configuration' : 'tracker';
+  const [page, setPage] = useState(currentPage);
+  useEffect(() => {
+    const onPopState = () => setPage(currentPage());
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+  function navigate(event, nextPage) {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    document.activeElement?.blur();
+    window.history.pushState(null, '', nextPage === 'configuration' ? '/configuration' : '/');
+    setPage(nextPage);
+  }
   useEffect(() => {
     store.load();
     const timer = window.setInterval(() => { if (!store.stopped) { store.tick(); focusStore.tick(); } }, 1000);
     return () => window.clearInterval(timer);
   }, []);
   return <>
-    <header className="site-header"><div className="header-layout"><div className="header-inner"><a className="brand" href="/" aria-label="Realtime home"><span className="brand-mark"><Icon size={15} /></span>realtime<span className="brand-dot">.</span></a><div className="header-actions"><button type="button" className="theme-toggle" aria-label={store.theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} title={store.theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} aria-pressed={store.theme === 'dark'} onClick={store.toggleTheme}><Icon name="sun" size={16} /></button></div></div></div></header>
+    <header className="site-header"><div className="header-layout"><div className="header-inner"><a className="brand" href="/" aria-label="Realtime home" onClick={event => navigate(event, 'tracker')}><span className="brand-mark"><Icon size={15} /></span>realtime<span className="brand-dot">.</span></a><div className="header-actions"><nav className="header-nav" aria-label="Main navigation"><a href="/" aria-current={page === 'tracker' ? 'page' : undefined} onClick={event => navigate(event, 'tracker')}>Tracker</a><a href="/configuration" aria-current={page === 'configuration' ? 'page' : undefined} onClick={event => navigate(event, 'configuration')}>Configuration</a></nav><button type="button" className="theme-toggle" aria-label={store.theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} title={store.theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} aria-pressed={store.theme === 'dark'} onClick={store.toggleTheme}><Icon name="sun" size={16} /></button></div></div></div></header>
     <main>
-      <div className="workspace-layout">
+      <div className="workspace-layout" hidden={page !== 'tracker' && !store.stopped}>
         {store.stopped ? <section className="panel stopped-panel tracker-column" role="status"><span className="soft-icon"><Icon name="power" size={16} /></span><h1>Realtime is stopped</h1><p>Your saved entries are kept. Open Realtime.exe to start again.</p></section> : <>
         <div className="side-column"><FocusTimer /><SpotifyPanel /></div>
         <div className="tracker-column">
@@ -232,6 +248,7 @@ const App = observer(function App() {
         <div className="side-column"><GoalPanel /><Notepad /></div>
         </>}
       </div>
+      <div className="workspace-layout" hidden={page !== 'configuration' || store.stopped}><ConfigurationPage active={page === 'configuration' && !store.stopped} /></div>
     </main>
   </>;
 });
