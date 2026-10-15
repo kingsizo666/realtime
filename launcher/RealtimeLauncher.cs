@@ -41,7 +41,7 @@ internal static class Program
                     {
                         client.Proxy = null;
                         string entries = client.DownloadString(server.Url + "api/entries/");
-                        if (!entries.Contains("Research") || !entries.Contains("entries"))
+                        if (!entries.Contains("\"categories\"") || !entries.Contains("\"entries\""))
                             throw new Exception("The entries API returned an unexpected response.");
                         var cookies = new CookieContainer();
                         cookies.SetCookies(new Uri(server.Url), client.ResponseHeaders["Set-Cookie"]);
@@ -169,6 +169,7 @@ internal static class Program
 internal sealed class LauncherContext : ApplicationContext
 {
     private readonly LocalServer server;
+    private WindowBlocker blocker;
     private readonly NotifyIcon tray;
     private readonly System.Windows.Forms.Timer timer;
     private readonly EventWaitHandle openRequest;
@@ -244,6 +245,7 @@ internal sealed class LauncherContext : ApplicationContext
             }
             else
             {
+                blocker = new WindowBlocker(server.Url, server.HelperToken, TryOpenBrowser);
                 TryOpenBrowser();
             }
         }
@@ -275,6 +277,7 @@ internal sealed class LauncherContext : ApplicationContext
         stopping = true;
         timer.Stop();
         tray.Visible = false;
+        if (blocker != null) blocker.Dispose();
         server.Dispose();
     }
 
@@ -306,6 +309,7 @@ internal sealed class LocalServer : IDisposable
     private bool disposed;
     private readonly ProcessJob job = new ProcessJob();
     private readonly string shutdownFile = Path.Combine(Program.Root, ".realtime-stop-" + Guid.NewGuid().ToString("N") + ".signal");
+    internal readonly string HelperToken = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N");
 
     internal LocalServer(int port = 8000) { this.port = port; }
     internal string Url { get { return "http://127.0.0.1:" + port + "/"; } }
@@ -375,6 +379,7 @@ internal sealed class LocalServer : IDisposable
             start.EnvironmentVariables["PYTHONUNBUFFERED"] = "1";
             start.EnvironmentVariables["PYTHONIOENCODING"] = "utf-8";
             start.EnvironmentVariables["REALTIME_SHUTDOWN_FILE"] = shutdownFile;
+            start.EnvironmentVariables["REALTIME_HELPER_TOKEN"] = HelperToken;
             var process = new Process { StartInfo = start };
             process.OutputDataReceived += delegate(object sender, DataReceivedEventArgs args) { if (args.Data != null) Program.Log(args.Data); };
             process.ErrorDataReceived += delegate(object sender, DataReceivedEventArgs args) { if (args.Data != null) Program.Log(args.Data); };

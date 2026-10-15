@@ -74,6 +74,6 @@ try {
     if ($writer) { $writer.Dispose() }
     if ($iconStream) { $iconStream.Dispose() }
 }
-& $compiler /nologo /target:winexe /optimize+ /out:Realtime.exe /win32icon:launcher\realtime.ico /reference:System.Windows.Forms.dll /reference:System.Drawing.dll launcher\RealtimeLauncher.cs
+& $compiler /nologo /target:winexe /optimize+ /out:Realtime.exe /win32icon:launcher\realtime.ico /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:System.Web.Extensions.dll launcher\RealtimeLauncher.cs launcher\WindowBlocker.cs
 if ($LASTEXITCODE -ne 0) { throw 'Could not build Realtime.exe.' }
 Write-Host 'Built Realtime.exe. Keep it in this project folder.'

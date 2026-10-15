@@ -115,14 +115,22 @@ const Entries = observer(function Entries() {
 });
 
 const FocusTimer = observer(function FocusTimer() {
+  useEffect(() => {
+    focusStore.connect(store.request);
+    const timer = window.setInterval(() => { if (!store.stopped) focusStore.refresh(); }, 2000);
+    return () => window.clearInterval(timer);
+  }, []);
   return <aside className="panel side-panel focus-panel" aria-labelledby="focus-heading">
     <div className="panel-heading"><div className="heading-with-icon"><span className="soft-icon"><Icon size={14} /></span><h2 id="focus-heading">Focus timer</h2></div></div>
-    <form onSubmit={event => { event.preventDefault(); focusStore.running ? focusStore.pause() : focusStore.start(); }}>
-      <label>Duration <span className="timer-duration"><input type="number" min="1" max="180" step="1" required disabled={focusStore.running} value={focusStore.minutes} onChange={event => focusStore.setMinutes(event.target.value)} aria-label="Focus duration in minutes" /><span>min</span></span></label>
+    <form onSubmit={event => { event.preventDefault(); focusStore.command(focusStore.running ? 'pause' : 'start'); }}>
+      <label>Duration <span className="timer-duration"><input type="number" min="1" max="180" step="1" required disabled={focusStore.running || focusStore.busy || !focusStore.connected} value={focusStore.minutes} onChange={event => focusStore.setMinutes(event.target.value)} aria-label="Focus duration in minutes" /><span>min</span></span></label>
       <div className={`timer-display ${focusStore.completed ? 'timer-complete' : ''}`} role="timer" aria-label="Focus time remaining">{focusStore.timeLabel}</div>
       <progress className="timer-progress" max="1" value={focusStore.progress} aria-label="Focus session progress" />
       {focusStore.timerStatus && <p className="side-note timer-status" role="status">{focusStore.timerStatus}</p>}
-      <div className="timer-actions"><button type="submit" className="primary-button">{focusStore.running ? 'Pause' : focusStore.remainingMs < focusStore.durationMs && !focusStore.completed ? 'Resume' : 'Start'}</button><button type="button" className="row-button" onClick={focusStore.reset}>Reset</button></div>
+      <label className="blocking-toggle"><input type="checkbox" checked={focusStore.blockEnabled} disabled={focusStore.running || focusStore.busy || !focusStore.connected || (!focusStore.blockEnabled && (!focusStore.blocker.available || !focusStore.apps.length))} onChange={event => focusStore.command('blocking', { enabled: event.target.checked })} />Block selected apps</label>
+      <p className="side-note blocker-status" role="status">{focusStore.blocker.message || (focusStore.blockEnabled && focusStore.running && focusStore.blocker.available ? 'App blocking is active.' : focusStore.apps.length ? `${focusStore.apps.length} selected in Configuration.` : 'Select apps in Configuration.')}</p>
+      <div className="timer-actions"><button type="submit" className="primary-button" disabled={focusStore.busy || !focusStore.connected}>{focusStore.running ? 'Pause' : focusStore.remainingMs < focusStore.durationMs && !focusStore.completed ? 'Resume' : 'Start'}</button><button type="button" className="row-button" disabled={focusStore.busy || !focusStore.connected} onClick={() => focusStore.command('reset')}>Reset</button></div>
+      {!focusStore.connected && !focusStore.busy && <button type="button" className="row-button" onClick={() => focusStore.connect(store.request)}>Retry timer</button>}
       {focusStore.timerError && <p className="cell-error" role="alert">{focusStore.timerError}</p>}
     </form>
   </aside>;

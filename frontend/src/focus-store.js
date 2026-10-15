@@ -1,4 +1,4 @@
-import { makeAutoObservable } from 'mobx';
+import { makeAutoObservable, runInAction } from 'mobx';
 
 const STORAGE_KEY = 'realtime-focus';
 
@@ -14,12 +14,23 @@ export class FocusStore {
   goalCompleted = false;
   notes = '';
   storage = null;
+  request = null;
+  connected = false;
+  busy = false;
+  refreshing = false;
+  revision = 0;
+  blockEnabled = false;
+  blocker = { available: false, running_apps: [], message: 'Open Realtime.exe to use app blocking.' };
+  apps = [];
+  appError = '';
+  appBusy = false;
 
   constructor(storage, now = Date.now()) {
     this.now = now;
     try {
       this.storage = storage ?? globalThis.localStorage ?? null;
       const saved = JSON.parse(this.storage?.getItem(STORAGE_KEY) || '{}');
+      if (Number.isInteger(saved.revision) && saved.revision >= 0) this.revision = saved.revision;
       const minutes = Number(saved.minutes);
       if (Number.isInteger(minutes) && minutes >= 1 && minutes <= 180) {
         this.minutes = String(minutes);
@@ -36,7 +47,7 @@ export class FocusStore {
     } catch {
       // The panels remain usable if browser storage is disabled or corrupted.
     }
-    makeAutoObservable(this, { storage: false }, { autoBind: true });
+    makeAutoObservable(this, { storage: false, request: false }, { autoBind: true });
     this.tick(now);
   }
 
@@ -51,10 +62,104 @@ export class FocusStore {
   get canSetGoal() { return Boolean(this.goal.trim()) && !this.goalActive; }
   get goalStatus() { return this.goalCompleted ? 'Goal complete. Well done.' : this.goalActive ? 'In progress' : 'Set a goal to begin.'; }
 
+  applyRemote(data, forceMinutes = false) {
+    if (data.blocker) this.blocker = data.blocker;
+    if (data.apps) this.apps = data.apps;
+    if (!data.focus) return;
+    const focus = data.focus;
+    if (!forceMinutes && focus.revision === this.revision && !focus.deadline) return;
+    // Keep an unsaved duration draft while paused; another tab's changes still sync.
+    if (forceMinutes || focus.revision !== this.revision || focus.deadline) this.minutes = String(focus.minutes);
+    this.revision = focus.revision;
+    this.remainingMs = focus.remaining_ms;
+    this.deadline = focus.deadline ? Date.parse(focus.deadline) : null;
+    this.completed = focus.completed;
+    this.blockEnabled = focus.block_enabled;
+    this.now = Date.now();
+    this.persist();
+  }
+
+  async connect(request) {
+    if (this.busy) return;
+    this.request = request;
+    this.busy = true;
+    try {
+      let data = await request('/api/focus/');
+      if (!data.exists) data = await request('/api/focus/', { method: 'POST', body: JSON.stringify({
+        action: 'restore', minutes: this.validMinutes ? Number(this.minutes) : 25,
+        remaining_ms: this.remainingMs, deadline: this.deadline, completed: this.completed,
+      }) });
+      runInAction(() => {
+        const draft = this.validMinutes && !this.running && !data.focus?.deadline && data.focus?.revision === this.revision && String(data.focus.minutes) !== this.minutes ? this.minutes : null;
+        this.applyRemote(data, true);
+        if (draft !== null) this.setMinutes(draft);
+        this.connected = true;
+        this.timerError = '';
+      });
+    } catch (error) { runInAction(() => { this.timerError = error.message || 'Could not load focus timer.'; }); }
+    finally { runInAction(() => { this.busy = false; }); }
+  }
+
+  async refresh() {
+    if (!this.request || this.busy || this.refreshing) return;
+    if (!this.connected) return this.connect(this.request);
+    this.refreshing = true;
+    const revision = this.revision;
+    try {
+      const data = await this.request('/api/focus/');
+      runInAction(() => { if (!this.busy && this.revision === revision) this.applyRemote(data); });
+    } catch { runInAction(() => { this.blocker = { ...this.blocker, available: false, message: 'Cannot reach Realtime. App blocking is released.' }; }); }
+    finally { runInAction(() => { this.refreshing = false; }); }
+  }
+
+  async command(action, extra = {}) {
+    if (!this.connected || this.busy) return false;
+    if (['start', 'reset'].includes(action) && !this.validMinutes) { this.timerError = 'Choose 1 to 180 minutes.'; return false; }
+    this.busy = true;
+    this.timerError = '';
+    const previousBlocking = this.blockEnabled;
+    if (action === 'blocking') this.blockEnabled = extra.enabled;
+    try {
+      const data = await this.request('/api/focus/', { method: 'POST', body: JSON.stringify({ action, revision: this.revision, minutes: Number(this.minutes), ...extra }) });
+      runInAction(() => { this.applyRemote(data, true); });
+      return true;
+    } catch (error) {
+      runInAction(() => { this.blockEnabled = previousBlocking; });
+      // Refresh after conflicts so a retry uses the current server revision.
+      try { const data = await this.request('/api/focus/'); runInAction(() => { this.applyRemote(data, true); }); } catch {}
+      runInAction(() => { this.timerError = error.message || 'Could not update focus timer.'; });
+      return false;
+    } finally { runInAction(() => { this.busy = false; }); }
+  }
+
+  async loadApps() {
+    if (!this.request || this.appBusy) return;
+    this.appBusy = true;
+    this.appError = '';
+    try {
+      const data = await this.request('/api/blocked-apps/');
+      runInAction(() => { this.applyRemote(data); });
+    } catch (error) { runInAction(() => { this.appError = error.message || 'Could not load apps.'; }); }
+    finally { runInAction(() => { this.appBusy = false; }); }
+  }
+
+  async changeApp(app, remove = false) {
+    if (!this.request || this.appBusy) return;
+    this.appBusy = true;
+    this.appError = '';
+    try {
+      const data = await this.request(remove ? `/api/blocked-apps/${app.id}/` : '/api/blocked-apps/', {
+        method: remove ? 'DELETE' : 'POST', ...(remove ? {} : { body: JSON.stringify({ path: app.path }) }),
+      });
+      runInAction(() => { this.applyRemote(data); });
+    } catch (error) { runInAction(() => { this.appError = error.message || 'Could not update apps.'; }); }
+    finally { runInAction(() => { this.appBusy = false; }); }
+  }
+
   persist() {
     try {
       this.storage?.setItem(STORAGE_KEY, JSON.stringify({
-        minutes: this.validMinutes ? this.minutes : '25', remainingMs: this.remainingMs,
+        minutes: this.validMinutes ? this.minutes : '25', remainingMs: this.remainingMs, revision: this.revision,
         deadline: this.deadline, completed: this.completed, goal: this.goal,
         goalStarted: this.goalStarted, goalCompleted: this.goalCompleted,
         notes: this.notes,

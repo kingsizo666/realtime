@@ -41,6 +41,14 @@ Keep the executable in the project root. Entries and automatically saved notepad
 
 Open **Configuration** in the app to add, rename, or remove categories. Changes apply immediately and are saved in the database; no code edits, migrations, or rebuilds are needed when changing categories. Renaming updates existing entries; removing a category keeps their history.
 
+## Focus app blocking (Windows)
+
+Run the rebuilt **Realtime.exe**. In **Configuration → Focus app blocking**, refresh the list and add a running app. In the focus timer, enable **Block selected apps** and press **Start**.
+
+Switching to a selected app minimizes its window without closing it. **Pause**, **Reset**, timer completion, or stopping Realtime releases blocking. The reminder also has **Pause focus**. Blocking continues if you close the tracker tab. Browsers and system tools stay accessible; some elevated, fullscreen, or packaged apps may not be supported. App choices and timer state are saved locally.
+
+After pulling this update, rebuild the frontend (`cd frontend; npm.cmd run build`), then rebuild the executable with `scripts/build-launcher.ps1`. The launcher applies database migrations automatically. Running Django directly supports the timer, but app blocking requires the executable.
+
 ## Connect Spotify
 
 Spotify Premium is required. Create an app in the [Spotify developer dashboard](https://developer.spotify.com/dashboard), select **Web API**, and register this exact redirect URI:

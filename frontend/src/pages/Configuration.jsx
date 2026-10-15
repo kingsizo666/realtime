@@ -2,6 +2,26 @@ import React, { useEffect, useRef, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { configurationStore as configuration } from '../configuration-store.js';
 import { Icon } from '../components/Icon.jsx';
+import { focusStore as focus } from '../focus-store.js';
+
+const BlockedApps = observer(function BlockedApps({ active }) {
+  const [selected, setSelected] = useState('');
+  useEffect(() => { if (active) focus.loadApps(); }, [active]);
+  const available = focus.blocker.running_apps.filter(app => !focus.apps.some(saved => saved.path === app.path));
+  return <section className="panel configuration-panel" aria-labelledby="blocked-apps-heading">
+    <div className="panel-heading"><div className="heading-with-icon"><span className="soft-icon"><Icon name="target" size={14} /></span><h2 id="blocked-apps-heading">Focus app blocking</h2></div><button type="button" className="row-button" disabled={focus.appBusy} onClick={focus.loadApps}>Refresh</button></div>
+    <p className="side-note">Selected apps minimize when you switch to them during focus. Pause or reset the timer to use them again.</p>
+    <form className="category-add-form app-add-form" onSubmit={event => { event.preventDefault(); const app = available.find(app => app.path === selected); if (app) { focus.changeApp(app); setSelected(''); } }}>
+      <label>Running app<select aria-label="App to block" value={available.some(app => app.path === selected) ? selected : ''} disabled={!focus.blocker.available || focus.appBusy} onChange={event => setSelected(event.target.value)}><option value="">Choose an app</option>{available.map(app => <option key={app.path} value={app.path}>{app.name}</option>)}</select></label>
+      <button type="submit" className="primary-button category-icon-button" aria-label="Add blocked app" title="Add blocked app" disabled={focus.appBusy || !focus.blocker.available || !available.some(app => app.path === selected)}><Icon name="plus" size={16} /></button>
+    </form>
+    <ul className="category-list blocked-app-list" aria-label="Blocked apps">{focus.apps.map(app => <li key={app.id}><span title={app.path}>{app.name}</span><button type="button" className="row-button delete-button category-icon-button" disabled={focus.appBusy} aria-label={`Remove blocked app: ${app.name}`} title="Remove app" onClick={() => focus.changeApp(app, true)}><Icon name="trash" size={15} /></button></li>)}</ul>
+    {!focus.apps.length && <p className="side-note">No apps selected. Open an app and refresh to add it.</p>}
+    <p className="side-note">Enable “Block selected apps” in the focus timer. Browsers and system tools stay accessible.</p>
+    {focus.blocker.message && <p className="side-note" role="status">{focus.blocker.message}</p>}
+    {focus.appError && <p className="cell-error" role="alert">{focus.appError}</p>}
+  </section>;
+});
 
 const CategoryRow = observer(function CategoryRow({ category }) {
   const [name, setName] = useState(category.name);
@@ -48,5 +68,6 @@ export const ConfigurationPage = observer(function ConfigurationPage({ active })
       {configuration.error && <div className="feedback error" role="alert">{configuration.error}<button type="button" disabled={configuration.working} onClick={configuration.load}>Refresh list</button></div>}
       {configuration.notice && <div className="feedback success" role="status">{configuration.notice}</div>}
     </section>
+    <BlockedApps active={active} />
   </section>;
 });

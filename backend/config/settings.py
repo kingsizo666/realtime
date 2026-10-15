@@ -23,3 +23,4 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CSRF_TRUSTED_ORIGINS = ['http://127.0.0.1:5173', 'http://localhost:5173']
 CSRF_FAILURE_VIEW = 'tracking.views.common.csrf_failure'
 REALTIME_SHUTDOWN_FILE = os.getenv('REALTIME_SHUTDOWN_FILE', '')
+REALTIME_HELPER_TOKEN = os.getenv('REALTIME_HELPER_TOKEN', '')

@@ -4,8 +4,13 @@ from .views.category import categories, category_detail
 from .views.entry import entries, entry_detail, finish
 from .views.notepad import notepad
 from .views.shutdown import shutdown
+from .views.focus import focus, blocked_apps, helper
 
 urlpatterns = [
+    path('focus/', focus),
+    path('focus/helper/', helper),
+    path('blocked-apps/', blocked_apps),
+    path('blocked-apps/<int:app_id>/', blocked_apps),
     path('categories/', categories),
     path('categories/<int:category_id>/', category_detail),
     path('notepad/', notepad),
